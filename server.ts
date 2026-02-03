@@ -1,0 +1,668 @@
+import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
+import cors from 'cors';
+import express from 'express';
+import jwt from 'jsonwebtoken';
+import { z } from 'zod';
+
+const app = express();
+const prisma = new PrismaClient();
+const PORT = process.env.PORT || 3001;
+const JWT_SECRET = process.env.JWT_SECRET!;
+
+app.use(cors());
+app.use(express.json());
+
+// ===== VALIDATIONS =====
+const registerSchema = z.object({
+  name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
+  email: z.string().email('Email inválido'),
+  password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
+});
+
+const loginSchema = z.object({
+  email: z.string().email('Email inválido'),
+  password: z.string().min(1, 'Senha é obrigatória'),
+});
+
+const createGroupSchema = z.object({
+  name: z.string().min(1, 'Nome é obrigatório'),
+  emoji: z.string().default('👥'),
+  description: z.string().optional(),
+  memberIds: z.array(z.string()).optional(),
+});
+
+const updateGroupSchema = z.object({
+  name: z.string().min(1).optional(),
+  emoji: z.string().optional(),
+  description: z.string().optional(),
+});
+
+const joinGroupSchema = z.object({
+  inviteCode: z.string().min(1, 'Código é obrigatório'),
+});
+
+const createExpenseSchema = z.object({
+  description: z.string().min(1, 'Descrição é obrigatória'),
+  amount: z.number().positive('Valor deve ser positivo'),
+  paidById: z.string(),
+  category: z.enum(['FOOD', 'TRANSPORT', 'ACCOMMODATION', 'ENTERTAINMENT', 'SHOPPING', 'UTILITIES', 'HEALTH', 'OTHER']).default('OTHER'),
+  splitType: z.enum(['EQUAL', 'EXACT', 'PERCENTAGE', 'SHARES']).default('EQUAL'),
+  splits: z.array(z.object({
+    userId: z.string(),
+    amount: z.number().optional(),
+    percentage: z.number().optional(),
+  })),
+  date: z.string().datetime().optional(),
+});
+
+const createSettlementSchema = z.object({
+  fromUserId: z.string(),
+  toUserId: z.string(),
+  amount: z.number().positive('Valor deve ser positivo'),
+  paymentMethod: z.enum(['PIX', 'CASH', 'TRANSFER', 'CREDIT_CARD', 'OTHER']).default('PIX'),
+  note: z.string().optional(),
+});
+
+// ===== AUTH HELPERS =====
+interface JWTPayload {
+  userId: string;
+  email: string;
+}
+
+function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, 12);
+}
+
+function comparePassword(password: string, hash: string): Promise<boolean> {
+  return bcrypt.compare(password, hash);
+}
+
+function generateToken(payload: JWTPayload): string {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
+}
+
+function verifyToken(token: string): JWTPayload | null {
+  try {
+    return jwt.verify(token, JWT_SECRET) as JWTPayload;
+  } catch {
+    return null;
+  }
+}
+
+function getUserFromRequest(req: express.Request): JWTPayload | null {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) return null;
+  const token = authHeader.substring(7);
+  return verifyToken(token);
+}
+
+// ===== BALANCE HELPER =====
+async function calculateUserBalance(groupId: string, userId: string): Promise<number> {
+  const paidExpenses = await prisma.expense.aggregate({
+    where: { groupId, paidById: userId },
+    _sum: { amount: true },
+  });
+  const totalPaid = Number(paidExpenses._sum.amount || 0);
+  
+  const userSplits = await prisma.expenseSplit.aggregate({
+    where: { expense: { groupId }, userId },
+    _sum: { amount: true },
+  });
+  const totalOwed = Number(userSplits._sum.amount || 0);
+  
+  const received = await prisma.settlement.aggregate({
+    where: { groupId, toUserId: userId },
+    _sum: { amount: true },
+  });
+  const totalReceived = Number(received._sum.amount || 0);
+  
+  const paid = await prisma.settlement.aggregate({
+    where: { groupId, fromUserId: userId },
+    _sum: { amount: true },
+  });
+  const totalSettlementPaid = Number(paid._sum.amount || 0);
+  
+  return totalPaid + totalReceived - totalOwed - totalSettlementPaid;
+}
+
+// ===== AUTH ROUTES =====
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const validation = registerSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({ error: validation.error.errors[0].message });
+    }
+    
+    const { name, email, password } = validation.data;
+    
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      return res.status(409).json({ error: 'Email já cadastrado' });
+    }
+    
+    const hashedPassword = await hashPassword(password);
+    const user = await prisma.user.create({
+      data: { name, email, password: hashedPassword },
+      select: { id: true, name: true, email: true, avatarUrl: true, createdAt: true },
+    });
+    
+    const token = generateToken({ userId: user.id, email: user.email });
+    res.status(201).json({ user, token });
+  } catch (error) {
+    console.error('Register error:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const validation = loginSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({ error: validation.error.errors[0].message });
+    }
+    
+    const { email, password } = validation.data;
+    const user = await prisma.user.findUnique({ where: { email } });
+    
+    if (!user || !(await comparePassword(password, user.password))) {
+      return res.status(401).json({ error: 'Email ou senha inválidos' });
+    }
+    
+    const token = generateToken({ userId: user.id, email: user.email });
+    res.json({
+      user: { id: user.id, name: user.name, email: user.email, avatarUrl: user.avatarUrl },
+      token,
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+app.get('/api/auth/me', async (req, res) => {
+  const payload = getUserFromRequest(req);
+  if (!payload) return res.status(401).json({ error: 'Não autorizado' });
+  
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: { id: true, name: true, email: true, avatarUrl: true, pixKey: true, createdAt: true },
+    });
+    
+    if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+    res.json(user);
+  } catch (error) {
+    console.error('Me error:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// ===== GROUPS ROUTES =====
+app.get('/api/groups', async (req, res) => {
+  const payload = getUserFromRequest(req);
+  if (!payload) return res.status(401).json({ error: 'Não autorizado' });
+  
+  try {
+    const groups = await prisma.group.findMany({
+      where: { members: { some: { userId: payload.userId } } },
+      include: {
+        members: { include: { user: { select: { id: true, name: true, avatarUrl: true } } } },
+        _count: { select: { members: true, expenses: true } },
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+    
+    const groupsWithBalance = await Promise.all(
+      groups.map(async (group) => ({
+        ...group,
+        membersCount: group._count.members,
+        userBalance: await calculateUserBalance(group.id, payload.userId),
+      }))
+    );
+    
+    res.json(groupsWithBalance);
+  } catch (error) {
+    console.error('List groups error:', error);
+    res.status(500).json({ error: 'Erro ao listar grupos' });
+  }
+});
+
+app.post('/api/groups', async (req, res) => {
+  const payload = getUserFromRequest(req);
+  if (!payload) return res.status(401).json({ error: 'Não autorizado' });
+  
+  try {
+    const validation = createGroupSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({ error: validation.error.errors[0].message });
+    }
+    
+    const { name, emoji, description, memberIds } = validation.data;
+    
+    const group = await prisma.group.create({
+      data: {
+        name,
+        emoji: emoji || '👥',
+        description,
+        createdById: payload.userId,
+        members: {
+          create: [
+            { userId: payload.userId, role: 'ADMIN' },
+            ...(memberIds || []).map((id) => ({ userId: id, role: 'MEMBER' as const })),
+          ],
+        },
+      },
+      include: {
+        members: { include: { user: { select: { id: true, name: true, avatarUrl: true } } } },
+        _count: { select: { members: true, expenses: true } },
+      },
+    });
+    
+    await prisma.activity.create({
+      data: {
+        groupId: group.id,
+        userId: payload.userId,
+        type: 'GROUP_CREATED',
+        description: `Criou o grupo "${name}"`,
+      },
+    });
+    
+    res.status(201).json({ ...group, membersCount: group._count.members, userBalance: 0 });
+  } catch (error) {
+    console.error('Create group error:', error);
+    res.status(500).json({ error: 'Erro ao criar grupo' });
+  }
+});
+
+app.get('/api/groups/:id', async (req, res) => {
+  const payload = getUserFromRequest(req);
+  if (!payload) return res.status(401).json({ error: 'Não autorizado' });
+  
+  try {
+    const group = await prisma.group.findUnique({
+      where: { id: req.params.id },
+      include: {
+        members: { include: { user: { select: { id: true, name: true, email: true, avatarUrl: true } } } },
+        expenses: {
+          include: {
+            paidBy: { select: { id: true, name: true, avatarUrl: true } },
+            splits: { include: { user: { select: { id: true, name: true } } } },
+          },
+          orderBy: { date: 'desc' },
+        },
+        _count: { select: { members: true, expenses: true } },
+      },
+    });
+    
+    if (!group) return res.status(404).json({ error: 'Grupo não encontrado' });
+    
+    const isMember = group.members.some((m) => m.userId === payload.userId);
+    if (!isMember) return res.status(403).json({ error: 'Você não é membro deste grupo' });
+    
+    res.json({ ...group, membersCount: group._count.members });
+  } catch (error) {
+    console.error('Get group error:', error);
+    res.status(500).json({ error: 'Erro ao buscar grupo' });
+  }
+});
+
+app.put('/api/groups/:id', async (req, res) => {
+  const payload = getUserFromRequest(req);
+  if (!payload) return res.status(401).json({ error: 'Não autorizado' });
+  
+  try {
+    const validation = updateGroupSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({ error: validation.error.errors[0].message });
+    }
+    
+    const membership = await prisma.groupMember.findUnique({
+      where: { groupId_userId: { groupId: req.params.id, userId: payload.userId } },
+    });
+    
+    if (!membership || membership.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Apenas admins podem editar o grupo' });
+    }
+    
+    const group = await prisma.group.update({
+      where: { id: req.params.id },
+      data: validation.data,
+      include: {
+        members: { include: { user: { select: { id: true, name: true, avatarUrl: true } } } },
+        _count: { select: { members: true, expenses: true } },
+      },
+    });
+    
+    res.json({ ...group, membersCount: group._count.members });
+  } catch (error) {
+    console.error('Update group error:', error);
+    res.status(500).json({ error: 'Erro ao atualizar grupo' });
+  }
+});
+
+app.delete('/api/groups/:id', async (req, res) => {
+  const payload = getUserFromRequest(req);
+  if (!payload) return res.status(401).json({ error: 'Não autorizado' });
+  
+  try {
+    const group = await prisma.group.findUnique({ where: { id: req.params.id } });
+    if (!group) return res.status(404).json({ error: 'Grupo não encontrado' });
+    if (group.createdById !== payload.userId) {
+      return res.status(403).json({ error: 'Apenas o criador pode excluir o grupo' });
+    }
+    
+    await prisma.group.delete({ where: { id: req.params.id } });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Delete group error:', error);
+    res.status(500).json({ error: 'Erro ao excluir grupo' });
+  }
+});
+
+app.post('/api/groups/join', async (req, res) => {
+  const payload = getUserFromRequest(req);
+  if (!payload) return res.status(401).json({ error: 'Não autorizado' });
+  
+  try {
+    const validation = joinGroupSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({ error: validation.error.errors[0].message });
+    }
+    
+    const group = await prisma.group.findUnique({
+      where: { inviteCode: validation.data.inviteCode },
+      include: { members: true },
+    });
+    
+    if (!group) return res.status(404).json({ error: 'Código de convite inválido' });
+    
+    if (group.members.some((m) => m.userId === payload.userId)) {
+      return res.status(409).json({ error: 'Você já é membro deste grupo' });
+    }
+    
+    await prisma.groupMember.create({
+      data: { groupId: group.id, userId: payload.userId, role: 'MEMBER' },
+    });
+    
+    await prisma.activity.create({
+      data: {
+        groupId: group.id,
+        userId: payload.userId,
+        type: 'MEMBER_JOINED',
+        description: 'Entrou no grupo',
+      },
+    });
+    
+    res.json({ success: true, groupId: group.id });
+  } catch (error) {
+    console.error('Join group error:', error);
+    res.status(500).json({ error: 'Erro ao entrar no grupo' });
+  }
+});
+
+// ===== GROUP SUB-ROUTES =====
+app.get('/api/groups/:id/balances', async (req, res) => {
+  const payload = getUserFromRequest(req);
+  if (!payload) return res.status(401).json({ error: 'Não autorizado' });
+  
+  try {
+    const group = await prisma.group.findUnique({
+      where: { id: req.params.id },
+      include: { members: { include: { user: { select: { id: true, name: true, avatarUrl: true } } } } },
+    });
+    
+    if (!group) return res.status(404).json({ error: 'Grupo não encontrado' });
+    
+    const balances = await Promise.all(
+      group.members.map(async (member) => ({
+        user: member.user,
+        balance: await calculateUserBalance(group.id, member.userId),
+      }))
+    );
+    
+    res.json(balances);
+  } catch (error) {
+    console.error('Get balances error:', error);
+    res.status(500).json({ error: 'Erro ao buscar saldos' });
+  }
+});
+
+app.get('/api/groups/:id/members', async (req, res) => {
+  const payload = getUserFromRequest(req);
+  if (!payload) return res.status(401).json({ error: 'Não autorizado' });
+  
+  try {
+    const members = await prisma.groupMember.findMany({
+      where: { groupId: req.params.id },
+      include: { user: { select: { id: true, name: true, email: true, avatarUrl: true } } },
+    });
+    res.json(members);
+  } catch (error) {
+    console.error('Get members error:', error);
+    res.status(500).json({ error: 'Erro ao buscar membros' });
+  }
+});
+
+app.get('/api/groups/:id/invite', async (req, res) => {
+  const payload = getUserFromRequest(req);
+  if (!payload) return res.status(401).json({ error: 'Não autorizado' });
+  
+  try {
+    const group = await prisma.group.findUnique({
+      where: { id: req.params.id },
+      select: { inviteCode: true },
+    });
+    if (!group) return res.status(404).json({ error: 'Grupo não encontrado' });
+    res.json({ inviteCode: group.inviteCode });
+  } catch (error) {
+    console.error('Get invite error:', error);
+    res.status(500).json({ error: 'Erro ao buscar convite' });
+  }
+});
+
+app.get('/api/groups/:id/expenses', async (req, res) => {
+  const payload = getUserFromRequest(req);
+  if (!payload) return res.status(401).json({ error: 'Não autorizado' });
+  
+  try {
+    const expenses = await prisma.expense.findMany({
+      where: { groupId: req.params.id },
+      include: {
+        paidBy: { select: { id: true, name: true, avatarUrl: true } },
+        splits: { include: { user: { select: { id: true, name: true } } } },
+      },
+      orderBy: { date: 'desc' },
+    });
+    res.json(expenses);
+  } catch (error) {
+    console.error('Get expenses error:', error);
+    res.status(500).json({ error: 'Erro ao buscar despesas' });
+  }
+});
+
+app.post('/api/groups/:id/expenses', async (req, res) => {
+  const payload = getUserFromRequest(req);
+  if (!payload) return res.status(401).json({ error: 'Não autorizado' });
+  
+  try {
+    const validation = createExpenseSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({ error: validation.error.errors[0].message });
+    }
+    
+    const { description, amount, paidById, category, splitType, splits, date } = validation.data;
+    
+    const expense = await prisma.expense.create({
+      data: {
+        groupId: req.params.id,
+        paidById,
+        amount,
+        description,
+        category,
+        splitType,
+        date: date ? new Date(date) : new Date(),
+        splits: {
+          create: splits.map((s) => ({
+            userId: s.userId,
+            amount: s.amount || amount / splits.length,
+            percentage: s.percentage,
+          })),
+        },
+      },
+      include: {
+        paidBy: { select: { id: true, name: true, avatarUrl: true } },
+        splits: { include: { user: { select: { id: true, name: true } } } },
+      },
+    });
+    
+    await prisma.activity.create({
+      data: {
+        groupId: req.params.id,
+        userId: payload.userId,
+        type: 'EXPENSE_ADDED',
+        description: `Adicionou despesa "${description}" de R$ ${amount.toFixed(2)}`,
+      },
+    });
+    
+    res.status(201).json(expense);
+  } catch (error) {
+    console.error('Create expense error:', error);
+    res.status(500).json({ error: 'Erro ao criar despesa' });
+  }
+});
+
+app.get('/api/groups/:id/settlements', async (req, res) => {
+  const payload = getUserFromRequest(req);
+  if (!payload) return res.status(401).json({ error: 'Não autorizado' });
+  
+  try {
+    const settlements = await prisma.settlement.findMany({
+      where: { groupId: req.params.id },
+      include: {
+        fromUser: { select: { id: true, name: true, avatarUrl: true } },
+        toUser: { select: { id: true, name: true, avatarUrl: true } },
+      },
+      orderBy: { settledAt: 'desc' },
+    });
+    res.json(settlements);
+  } catch (error) {
+    console.error('Get settlements error:', error);
+    res.status(500).json({ error: 'Erro ao buscar acertos' });
+  }
+});
+
+app.post('/api/groups/:id/settlements', async (req, res) => {
+  const payload = getUserFromRequest(req);
+  if (!payload) return res.status(401).json({ error: 'Não autorizado' });
+  
+  try {
+    const validation = createSettlementSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({ error: validation.error.errors[0].message });
+    }
+    
+    const { fromUserId, toUserId, amount, paymentMethod, note } = validation.data;
+    
+    const settlement = await prisma.settlement.create({
+      data: {
+        groupId: req.params.id,
+        fromUserId,
+        toUserId,
+        amount,
+        paymentMethod,
+        note,
+      },
+      include: {
+        fromUser: { select: { id: true, name: true, avatarUrl: true } },
+        toUser: { select: { id: true, name: true, avatarUrl: true } },
+      },
+    });
+    
+    await prisma.activity.create({
+      data: {
+        groupId: req.params.id,
+        userId: payload.userId,
+        type: 'SETTLEMENT_MADE',
+        description: `Registrou acerto de R$ ${amount.toFixed(2)}`,
+      },
+    });
+    
+    res.status(201).json(settlement);
+  } catch (error) {
+    console.error('Create settlement error:', error);
+    res.status(500).json({ error: 'Erro ao criar acerto' });
+  }
+});
+
+// ===== ACTIVITIES =====
+app.get('/api/activities', async (req, res) => {
+  const payload = getUserFromRequest(req);
+  if (!payload) return res.status(401).json({ error: 'Não autorizado' });
+  
+  try {
+    const userGroups = await prisma.groupMember.findMany({
+      where: { userId: payload.userId },
+      select: { groupId: true },
+    });
+    
+    const activities = await prisma.activity.findMany({
+      where: { groupId: { in: userGroups.map((g) => g.groupId) } },
+      include: {
+        group: { select: { id: true, name: true, emoji: true } },
+        user: { select: { id: true, name: true, avatarUrl: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+    
+    res.json(activities);
+  } catch (error) {
+    console.error('List activities error:', error);
+    res.status(500).json({ error: 'Erro ao listar atividades' });
+  }
+});
+
+// ===== USERS =====
+app.get('/api/users/search', async (req, res) => {
+  const payload = getUserFromRequest(req);
+  if (!payload) return res.status(401).json({ error: 'Não autorizado' });
+  
+  try {
+    const query = req.query.q as string;
+    if (!query || query.length < 2) {
+      return res.json([]);
+    }
+    
+    const users = await prisma.user.findMany({
+      where: {
+        OR: [
+          { name: { contains: query, mode: 'insensitive' } },
+          { email: { contains: query, mode: 'insensitive' } },
+        ],
+        NOT: { id: payload.userId },
+      },
+      select: { id: true, name: true, email: true, avatarUrl: true },
+      take: 10,
+    });
+    
+    res.json(users);
+  } catch (error) {
+    console.error('Search users error:', error);
+    res.status(500).json({ error: 'Erro ao buscar usuários' });
+  }
+});
+
+// ===== HEALTH CHECK =====
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+app.get('/', (req, res) => {
+  res.json({ message: 'RachaMais API', status: 'running' });
+});
+
+// ===== START SERVER =====
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});

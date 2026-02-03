@@ -1,4 +1,18 @@
 {
-  "buildCommand": "npx expo export -p web",
-  "outputDirectory": "dist"
+  "version": 2,
+  "buildCommand": "npx expo export -p web && cp -r dist/server/_expo/functions api-functions",
+  "outputDirectory": "dist/client",
+  "functions": {
+    "api-functions/**/*.js": {
+      "runtime": "nodejs20.x"
+    }
+  },
+  "rewrites": [
+    { "source": "/api/auth/me", "destination": "/api-functions/api/auth/me+api.js" },
+    { "source": "/api/auth/login", "destination": "/api-functions/api/auth/login+api.js" },
+    { "source": "/api/auth/register", "destination": "/api-functions/api/auth/register+api.js" },
+    { "source": "/api/groups", "destination": "/api-functions/api/groups/index+api.js" },
+    { "source": "/api/activities", "destination": "/api-functions/api/activities+api.js" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }
