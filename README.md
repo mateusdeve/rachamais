@@ -1,50 +1,119 @@
-# Welcome to your Expo app 👋
+# RachaMais - App de Divisão de Contas
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+App React Native com Expo para dividir contas entre amigos de forma rápida e justa.
 
-## Get started
+## 🚀 Tecnologias
 
-1. Install dependencies
+- **Expo SDK 54+** (Managed Workflow)
+- **Expo Router** (file-based routing)
+- **TypeScript**
+- **NativeWind** (Tailwind CSS para React Native)
+- **@expo/vector-icons** (Ícones)
+- **AsyncStorage** (Armazenamento local)
 
-   ```bash
-   npm install
-   ```
+## 📦 Instalação
 
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+### 1. Instalar dependências
 
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### 2. Configurar NativeWind
 
-## Learn more
+O NativeWind já está configurado nos arquivos:
+- `tailwind.config.js`
+- `metro.config.js`
+- `nativewind-env.d.ts`
+- `global.css`
 
-To learn more about developing your project with Expo, look at the following resources:
+### 3. Executar o projeto
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+```bash
+# Iniciar o servidor de desenvolvimento
+npm start
 
-## Join the community
+# Executar no iOS
+npm run ios
 
-Join our community of developers creating universal apps.
+# Executar no Android
+npm run android
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+# Executar na Web
+npm run web
+```
+
+## 📱 Estrutura do Projeto
+
+```
+rachamais/
+├── app/
+│   ├── (auth)/          # Telas de autenticação
+│   │   ├── onboarding.tsx
+│   │   ├── login.tsx
+│   │   └── register.tsx
+│   ├── (tabs)/          # Telas principais com tabs
+│   │   ├── index.tsx     # Home - Lista de grupos
+│   │   ├── activity.tsx  # Atividades
+│   │   └── profile.tsx   # Perfil
+│   ├── group/            # Telas de grupos
+│   │   ├── create.tsx    # Criar grupo
+│   │   └── [id]/         # Detalhes do grupo
+│   │       ├── index.tsx
+│   │       ├── add-expense.tsx
+│   │       ├── balances.tsx
+│   │       └── invite.tsx
+│   └── _layout.tsx       # Layout raiz
+├── components/
+│   ├── ui/               # Componentes UI reutilizáveis
+│   ├── groups/           # Componentes de grupos
+│   ├── expenses/         # Componentes de despesas
+│   └── balances/         # Componentes de saldos
+├── constants/
+│   ├── colors.ts         # Cores do tema
+│   └── mockData.ts       # Dados mock para desenvolvimento
+├── types/
+│   └── index.ts          # Tipos TypeScript
+└── lib/
+    └── utils.ts          # Utilitários (cn function)
+```
+
+## 🎨 Telas Implementadas
+
+### Autenticação
+- ✅ Onboarding (3 slides)
+- ✅ Login
+- ✅ Registro
+
+### Principal
+- ✅ Home (Lista de grupos)
+- ✅ Criar Grupo
+- ✅ Detalhe do Grupo
+- ✅ Adicionar Despesa
+- ✅ Saldos (Quem deve o quê)
+- ✅ Convidar
+- ✅ Perfil/Configurações
+
+## 📝 Funcionalidades
+
+- **Navegação completa** entre todas as telas
+- **Dados mock** para desenvolvimento
+- **Design fiel** ao HTML fornecido
+- **Componentes reutilizáveis** organizados
+- **TypeScript** com tipagem completa
+- **NativeWind** para estilização
+
+## 🔧 Próximos Passos
+
+Esta é a **Parte 1** - Telas Estáticas. As próximas etapas incluirão:
+
+- Integração com backend/API
+- Validação de formulários
+- Lógica de negócio
+- Persistência de dados
+- Autenticação real
+- Notificações push
+
+## 📄 Licença
+
+Este projeto é privado.
