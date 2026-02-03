@@ -20,25 +20,12 @@
       }
     },
     "production": {
-      "ios": {
-        "bundleIdentifier": "com.rachamais.app"
-      },
-      "android": {
-        "package": "com.rachamais.app"
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://rachamais.vercel.app"
       }
     }
   },
   "submit": {
-    "production": {
-      "ios": {
-        "appleId": "seu-email@exemplo.com",
-        "ascAppId": "seu-app-store-connect-app-id",
-        "appleTeamId": "seu-team-id"
-      },
-      "android": {
-        "serviceAccountKeyPath": "./path-to-service-account-key.json",
-        "track": "production"
-      }
-    }
+    "production": {}
   }
 }

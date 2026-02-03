@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { comparePassword, generateToken } from '@/lib/auth';
 import { loginSchema } from '@/lib/validations';
-import { apiResponse, apiError } from '@/lib/utils';
+import { apiResponse, apiError, handlePrismaError } from '@/lib/utils';
 
 export async function POST(request: Request) {
   try {
@@ -43,7 +43,6 @@ export async function POST(request: Request) {
       token,
     });
   } catch (error) {
-    console.error('Login error:', error);
-    return apiError('Erro interno do servidor', 500);
+    return handlePrismaError(error);
   }
 }

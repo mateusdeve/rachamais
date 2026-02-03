@@ -6,13 +6,18 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "rachamais",
-    "associatedDomains": ["applinks:rachamais.app"],
+    "associatedDomains": [
+      "applinks:rachamais.app"
+    ],
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.rachamais.app",
-      "buildNumber": "1",
+      "buildNumber": "3",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
       "infoPlist": {
         "NSUserTrackingUsageDescription": "Este app não rastreia usuários.",
         "NSCameraUsageDescription": "Permitimos acesso à câmera para atualizar sua foto de perfil.",
@@ -53,6 +58,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "ef9398d9-6719-489a-854c-405aaa0ab9a4"
+      }
     }
   }
 }
