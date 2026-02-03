@@ -2,12 +2,15 @@
 
 # dependencies
 node_modules/
+.pnp
+.pnp.js
 
 # Expo
 .expo/
 dist/
 web-build/
 expo-env.d.ts
+.expo-shared/
 
 # Native
 .kotlin/
@@ -17,27 +20,168 @@ expo-env.d.ts
 *.p12
 *.key
 *.mobileprovision
+*.keystore
 
 # Metro
 .metro-health-check*
+.metro-cache/
 
 # debug
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+lerna-debug.log*
+.pnpm-debug.log*
 
 # macOS
 .DS_Store
 *.pem
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
 
 # local env files
+.env
 .env*.local
+.env.*
 
 # typescript
 *.tsbuildinfo
+*.log
 
+# IDE - VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+.history/
+
+# IDE - IntelliJ / WebStorm
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# IDE - Xcode
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+*.xcworkspace/*
+!*.xcworkspace/contents.xcworkspacedata
+*.xcuserdata
+*.xcscmblueprint
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# IDE - Android Studio
+*.iml
+.gradle/
+local.properties
+.idea/
+*.hprof
+.cxx/
+.externalNativeBuild
+.navigation/
+captures/
+output.json
+
+# Testing
+coverage/
+*.lcov
+.nyc_output/
+.jest/
+
+# Build outputs
+build/
+dist/
+*.tgz
+*.tar.gz
+
+# EAS Build
+.eas/
+eas-build-*.json
+
+# Prisma
+prisma/migrations/.migrate/
+prisma/dev.db
+prisma/dev.db-journal
+*.db
+*.db-journal
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.cache/
+.temp/
+tmp/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Backup files
+*.bak
+*.backup
+*.old
+*.orig
+
+# Package manager locks (keep only one)
+# yarn.lock
+# package-lock.json
+# pnpm-lock.yaml
+
+# Misc
 app-example
-
-# generated native folders
-/ios
-/android
+*.local
+.cache
+.turbo
+.next
+out
