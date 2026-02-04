@@ -97,6 +97,42 @@ function getUserFromRequest(req: express.Request): JWTPayload | null {
   return verifyToken(token);
 }
 
+// ===== PÁGINA DE CONVITE =====
+// Link HTTPS é clicável no WhatsApp. Ao abrir, o usuário toca em "Abrir no app" e o app abre (rachamais://).
+const PUBLIC_APP_URL = 'https://rachamais-production.up.railway.app';
+const APP_STORE_URL = 'https://apps.apple.com/app/id6479499344';
+
+app.get('/invite/:code', (req, res) => {
+  const { code } = req.params;
+  const appLink = `rachamais://invite/${code}`;
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Convite RachaMais</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 24px; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #f6f8f6; color: #1a1a1a; text-align: center; }
+    h1 { font-size: 1.5rem; margin-bottom: 8px; }
+    p { color: #666; margin-bottom: 24px; }
+    a { display: inline-block; padding: 14px 28px; margin: 8px; border-radius: 12px; font-weight: 600; text-decoration: none; }
+    .open-app { background: #22C55E; color: #fff; }
+    .appstore { background: #000; color: #fff; }
+  </style>
+</head>
+<body>
+  <h1>Você foi convidado para o RachaMais!</h1>
+  <p>Toque no botão abaixo para abrir no app e entrar no grupo.</p>
+  <a href="${appLink}" class="open-app">Abrir no app</a>
+  <p style="margin-top: 16px; font-size: 0.9rem;">Não tem o app?</p>
+  <a href="${APP_STORE_URL}" class="appstore">Baixar na App Store</a>
+</body>
+</html>`;
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(html);
+});
+
 // ===== BALANCE HELPER =====
 async function calculateUserBalance(groupId: string, userId: string): Promise<number> {
   const paidExpenses = await prisma.expense.aggregate({
@@ -451,10 +487,15 @@ app.get('/api/groups/:id/invite', async (req, res) => {
   try {
     const group = await prisma.group.findUnique({
       where: { id: req.params.id },
-      select: { inviteCode: true },
+      select: { inviteCode: true, name: true },
     });
     if (!group) return res.status(404).json({ error: 'Grupo não encontrado' });
-    res.json({ inviteCode: group.inviteCode });
+    const inviteLink = `${PUBLIC_APP_URL}/invite/${group.inviteCode}`;
+    res.json({
+      inviteCode: group.inviteCode,
+      inviteLink,
+      groupName: group.name,
+    });
   } catch (error) {
     console.error('Get invite error:', error);
     res.status(500).json({ error: 'Erro ao buscar convite' });

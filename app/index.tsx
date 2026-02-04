@@ -20,13 +20,11 @@ export default function Index() {
       const path = parsed.path || '';
       const queryParams = parsed.queryParams || {};
 
-      // Verificar se é um link de convite: rachamais://invite/[code]
-      // O formato pode ser: rachamais://invite/CODE ou rachamais://invite?code=CODE
+      // Verificar se é um link de convite: rachamais://invite/CODE ou https://.../invite/CODE
       let inviteCode: string | null = null;
 
       if (path.includes('invite')) {
-        // Extrair código do path: /invite/CODE
-        const pathParts = path.split('/');
+        const pathParts = path.split('/').filter(Boolean);
         const codeIndex = pathParts.indexOf('invite');
         if (codeIndex >= 0 && pathParts[codeIndex + 1]) {
           inviteCode = pathParts[codeIndex + 1];
@@ -39,13 +37,11 @@ export default function Index() {
       }
 
       if (inviteCode) {
-        // Se não estiver autenticado, redirecionar para login primeiro
+        // Sempre salvar o código de convite para não perder em cold start (auth ainda carregando)
+        AsyncStorage.setItem('pendingInviteCode', inviteCode);
         if (!isAuthenticated && !authLoading) {
-          // Salvar o código de convite para usar depois do login
-          AsyncStorage.setItem('pendingInviteCode', inviteCode);
           router.replace('/(auth)/login');
         } else if (isAuthenticated) {
-          // Se estiver autenticado, ir direto para a tela de aceitar convite
           router.replace(`/invite/${inviteCode}` as any);
         }
         return;

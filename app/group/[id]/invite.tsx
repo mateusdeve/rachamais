@@ -31,8 +31,12 @@ export default function InviteScreen() {
       setLoading(true);
       const data = await invite.get(id);
       setGroupCode(data.inviteCode);
-      setInviteLink(data.inviteLink);
-      setGroupName(data.groupName);
+      // Garantir link e nome mesmo se a API retornar só inviteCode (ex.: backend antigo)
+      const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'https://rachamais-production.up.railway.app';
+      const link = data.inviteLink ?? (data.inviteCode ? `${baseUrl}/invite/${data.inviteCode}` : '');
+      const name = data.groupName ?? 'o grupo';
+      setInviteLink(link);
+      setGroupName(name);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erro ao carregar código de convite';
       showError(errorMessage);

@@ -6,15 +6,12 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "rachamais",
-    "associatedDomains": [
-      "applinks:rachamais.app"
-    ],
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.rachamais.app",
-      "buildNumber": "3",
+      "buildNumber": "5",
       "config": {
         "usesNonExemptEncryption": false
       },

@@ -1,18 +1,19 @@
-import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Base URL da API
 const getBaseURL = () => {
-  // Para Expo Router, as API routes ficam na mesma origem
-  // Em desenvolvimento web: usar window.location.origin
-  // Em dispositivo nativo: usar localhost (Expo Router serve as APIs localmente)
+  // Em produção, usar a variável de ambiente
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL;
+  }
+  
+  // Para desenvolvimento web: usar window.location.origin
   if (typeof window !== 'undefined') {
-    // Web: usar a origem atual
     return window.location.origin;
   }
-  // Native: usar localhost (Expo Router serve na mesma porta do Metro)
-  // Em produção, pode ser configurado via Constants.expoConfig?.extra?.apiUrl
-  return Constants.expoConfig?.extra?.apiUrl || 'http://localhost:8081';
+  
+  // Fallback para desenvolvimento local
+  return 'http://localhost:8081';
 };
 
 const API_BASE_URL = getBaseURL();
@@ -144,8 +145,8 @@ export interface Settlement {
 
 export interface InviteResponse {
   inviteCode: string;
-  inviteLink: string;
-  groupName: string;
+  inviteLink?: string;
+  groupName?: string;
 }
 
 // Cliente API base

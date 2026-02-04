@@ -21,7 +21,7 @@
     },
     "production": {
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://rachamais.vercel.app"
+        "EXPO_PUBLIC_API_URL": "https://rachamais-production.up.railway.app"
       }
     }
   },
