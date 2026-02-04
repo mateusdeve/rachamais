@@ -438,6 +438,39 @@ app.post('/api/groups/join', async (req, res) => {
 });
 
 // ===== GROUP SUB-ROUTES =====
+// Simplifica saldos em lista de dívidas par a par (quem deve para quem)
+function simplifyDebts(
+  balances: { userId: string; userName: string; avatarUrl: string | null; amount: number }[]
+): { from: { id: string; name: string; avatarUrl: string | null }; to: { id: string; name: string; avatarUrl: string | null }; amount: number }[] {
+  const creditors = balances
+    .filter((b) => b.amount > 0)
+    .map((b) => ({ ...b, amount: b.amount }))
+    .sort((a, b) => b.amount - a.amount);
+  const debtors = balances
+    .filter((b) => b.amount < 0)
+    .map((b) => ({ ...b, amount: Math.abs(b.amount) }))
+    .sort((a, b) => b.amount - a.amount);
+  const debts: { from: { id: string; name: string; avatarUrl: string | null }; to: { id: string; name: string; avatarUrl: string | null }; amount: number }[] = [];
+  let i = 0;
+  let j = 0;
+  while (i < creditors.length && j < debtors.length) {
+    const cred = creditors[i];
+    const deb = debtors[j];
+    const amount = Math.min(cred.amount, deb.amount);
+    if (amount <= 0) break;
+    debts.push({
+      from: { id: deb.userId, name: deb.userName, avatarUrl: deb.avatarUrl },
+      to: { id: cred.userId, name: cred.userName, avatarUrl: cred.avatarUrl },
+      amount,
+    });
+    cred.amount -= amount;
+    deb.amount -= amount;
+    if (cred.amount <= 0) i++;
+    if (deb.amount <= 0) j++;
+  }
+  return debts;
+}
+
 app.get('/api/groups/:id/balances', async (req, res) => {
   const payload = getUserFromRequest(req);
   if (!payload) return res.status(401).json({ error: 'Não autorizado' });
@@ -450,14 +483,27 @@ app.get('/api/groups/:id/balances', async (req, res) => {
     
     if (!group) return res.status(404).json({ error: 'Grupo não encontrado' });
     
-    const balances = await Promise.all(
+    const balanceList = await Promise.all(
       group.members.map(async (member) => ({
-        user: member.user,
-        balance: await calculateUserBalance(group.id, member.userId),
+        userId: member.user.id,
+        userName: member.user.name,
+        avatarUrl: member.user.avatarUrl,
+        amount: await calculateUserBalance(group.id, member.userId),
       }))
     );
     
-    res.json(balances);
+    const totalSpentResult = await prisma.expense.aggregate({
+      where: { groupId: group.id },
+      _sum: { amount: true },
+    });
+    const totalSpent = Number(totalSpentResult._sum.amount ?? 0);
+    const debts = simplifyDebts(balanceList);
+    
+    res.json({
+      balances: balanceList,
+      debts,
+      totalSpent,
+    });
   } catch (error) {
     console.error('Get balances error:', error);
     res.status(500).json({ error: 'Erro ao buscar saldos' });

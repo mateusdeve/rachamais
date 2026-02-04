@@ -14,7 +14,8 @@ import { useToast } from '@/contexts/ToastContext';
 
 export default function BalancesScreen() {
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id: string }>();
+  const id = typeof params.id === 'string' ? params.id : params.id?.[0] ?? null;
   const { user } = useAuth();
   const { showError } = useToast();
   const [balancesData, setBalancesData] = useState<BalancesResponse | null>(null);
