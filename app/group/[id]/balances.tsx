@@ -201,14 +201,7 @@ export default function BalancesScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.primary} />
         </Pressable>
         <Text style={styles.headerTitle}>Quem deve o quê</Text>
-        <Pressable
-          style={({ pressed }) => [
-            styles.headerButton,
-            pressed && styles.buttonPressed,
-          ]}
-        >
-          <Text style={styles.editText}>Editar</Text>
-        </Pressable>
+        <View style={styles.headerButton} />
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
@@ -326,11 +319,6 @@ const styles = StyleSheet.create({
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  editText: {
-    color: colors.primary,
-    fontSize: 14,
-    fontWeight: '500',
   },
   buttonPressed: {
     opacity: 0.7,

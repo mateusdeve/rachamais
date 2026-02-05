@@ -4,7 +4,7 @@
     "slug": "rachamais",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/icons/apple-icon.png",
     "scheme": "rachamais",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
@@ -27,7 +27,7 @@
       "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#22C55E",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "foregroundImage": "./assets/images/icons/android-icon-192x192.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
@@ -36,7 +36,8 @@
     },
     "web": {
       "output": "server",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/icons/favicon.ico",
+      "manifest": "./assets/images/icons/manifest.json"
     },
     "plugins": [
       "expo-router",
@@ -52,14 +53,14 @@
           }
         }
       ],
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/images/icon.png",
-          "color": "#22C55E",
-          "sounds": ["default"]
-        }
-      ]
+        [
+          "expo-notifications",
+          {
+            "icon": "./assets/images/icons/android-icon-96x96.png",
+            "color": "#22C55E",
+            "sounds": ["default"]
+          }
+        ]
     ],
     "experiments": {
       "typedRoutes": true,

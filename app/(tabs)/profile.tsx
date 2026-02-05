@@ -43,14 +43,7 @@ export default function ProfileScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
         <Text style={styles.headerTitle}>Perfil</Text>
-        <Pressable
-          style={({ pressed }) => [
-            styles.headerButton,
-            pressed && styles.buttonPressed,
-          ]}
-        >
-          <Ionicons name="create" size={20} color={colors.text} />
-        </Pressable>
+        <View style={styles.headerButton} />
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
@@ -110,46 +103,6 @@ export default function ProfileScreen() {
             </View>
           </Pressable>
 
-          <Pressable
-            style={({ pressed }) => [
-              styles.settingsCard,
-              pressed && styles.cardPressed,
-            ]}
-          >
-            <View style={styles.settingsItem}>
-              <View style={styles.settingsItemLeft}>
-                <View style={styles.iconContainer}>
-                  <Ionicons name="moon" size={20} color={colors.text} />
-                </View>
-                <Text style={styles.settingsItemText}>Tema</Text>
-              </View>
-              <View style={styles.settingsItemRight}>
-                <Text style={styles.settingsItemValue}>Claro</Text>
-                <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-              </View>
-            </View>
-          </Pressable>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Suporte</Text>
-          
-          <Pressable
-            style={({ pressed }) => [
-              styles.settingsCard,
-              pressed && styles.cardPressed,
-            ]}
-          >
-            <View style={styles.settingsItem}>
-              <View style={styles.settingsItemLeft}>
-                <View style={styles.iconContainer}>
-                  <Ionicons name="information-circle" size={20} color={colors.text} />
-                </View>
-                <Text style={styles.settingsItemText}>Sobre o app</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-            </View>
-          </Pressable>
         </View>
 
         <Pressable

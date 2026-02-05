@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, Pressable, ScrollView, StyleSheet, Platform } from 'react-native';
+import { View, Text, Pressable, ScrollView, StyleSheet, Platform, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '@/components/ui/Button';
@@ -97,7 +97,11 @@ export default function RegisterScreen() {
       <View style={styles.formContainer}>
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <Text style={styles.logo}>💰</Text>
+            <Image 
+              source={require('@/assets/images/logo.png')} 
+              style={styles.logo}
+              resizeMode="contain"
+            />
           </View>
           <Text style={styles.title}>Criar Conta</Text>
           <Text style={styles.subtitle}>Junte-se ao RachaMais</Text>
@@ -244,30 +248,18 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     marginBottom: spacing.xl,
+    paddingTop: spacing.xxl,
   },
   logoContainer: {
-    width: 80,
-    height: 80,
-    backgroundColor: colors.primary,
-    borderRadius: 12,
+    width: 120,
+    height: 120,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.md,
-    ...Platform.select({
-      ios: {
-        shadowColor: colors.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
   },
   logo: {
-    fontSize: 48,
-    color: '#fff',
+    width: '100%',
+    height: '100%',
   },
   title: {
     ...typography.styles.h1,
