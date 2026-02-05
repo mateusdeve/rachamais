@@ -49,7 +49,11 @@ export default function ProfileScreen() {
         <View style={styles.headerButton} />
       </View>
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.profileSection}>
           <View style={styles.avatarContainer}>
             <Avatar src={user?.avatarUrl || undefined} name={user?.name || 'Usuário'} size={128} />
@@ -80,7 +84,7 @@ export default function ProfileScreen() {
               <Switch
                 value={notificationsEnabled}
                 onValueChange={setNotificationsEnabled}
-                trackColor={{ false: '#f0f4f2', true: colors.primary }}
+                trackColor={{ false: colors.border, true: colors.primary }}
                 thumbColor="#fff"
               />
             </View>
@@ -162,18 +166,18 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f6f8f6',
+    backgroundColor: colors.surface,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingTop: Platform.OS === 'ios' ? 50 : spacing.lg,
     paddingBottom: spacing.md,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: colors.border,
   },
   headerTitle: {
     ...typography.styles.h2,
@@ -195,12 +199,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xxl,
   },
   profileSection: {
     alignItems: 'center',
     paddingVertical: spacing.xl,
-    paddingHorizontal: spacing.md,
   },
   avatarContainer: {
     position: 'relative',
@@ -217,7 +221,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
-    borderColor: '#fff',
+    borderColor: colors.background,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -241,38 +245,35 @@ const styles = StyleSheet.create({
   },
   userEmail: {
     ...typography.styles.body,
-    color: '#61896f',
+    color: colors.textSecondary,
   },
   section: {
     marginTop: spacing.lg,
-    paddingHorizontal: spacing.md,
   },
   sectionTitle: {
     ...typography.styles.h3,
     color: colors.text,
     marginBottom: spacing.sm,
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.xs,
   },
   settingsCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: colors.background,
+    borderRadius: 16,
     marginBottom: spacing.sm,
-    padding: spacing.md,
+    padding: spacing.lg,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
       },
-      android: {
-        elevation: 1,
-      },
+      android: { elevation: 2 },
     }),
   },
   cardPressed: {
-    opacity: 0.9,
-    backgroundColor: '#F9FAFB',
+    opacity: 0.95,
+    backgroundColor: colors.surface,
   },
   settingsItem: {
     flexDirection: 'row',
@@ -302,40 +303,39 @@ const styles = StyleSheet.create({
   },
   settingsItemValue: {
     ...typography.styles.body,
-    color: '#61896f',
+    color: colors.textSecondary,
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    marginHorizontal: spacing.md,
+    backgroundColor: colors.background,
+    borderRadius: 16,
     marginTop: spacing.lg,
-    padding: spacing.md,
+    padding: spacing.lg,
     gap: spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.2)',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
       },
-      android: {
-        elevation: 1,
-      },
+      android: { elevation: 2 },
     }),
   },
   logoutButtonPressed: {
-    opacity: 0.9,
-    backgroundColor: '#F9FAFB',
+    opacity: 0.95,
+    backgroundColor: colors.surface,
   },
   logoutIconContainer: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FEE2E2',
-    borderRadius: 8,
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    borderRadius: 22,
   },
   logoutText: {
     ...typography.styles.bodyBold,

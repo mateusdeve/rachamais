@@ -125,14 +125,14 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    padding: spacing.md,
-    paddingTop: spacing.lg,
+    padding: spacing.lg,
+    paddingTop: spacing.xl,
   },
   skipButton: {
     paddingVertical: spacing.xs,
@@ -142,9 +142,8 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   skipText: {
+    ...typography.styles.bodyBold,
     color: colors.primary,
-    fontSize: 16,
-    fontWeight: '600',
   },
   slide: {
     flex: 1,
@@ -162,8 +161,8 @@ const styles = StyleSheet.create({
   imageWrapper: {
     width: '100%',
     height: '100%',
-    backgroundColor: 'rgba(16, 183, 72, 0.1)',
-    borderRadius: 12,
+    backgroundColor: 'rgba(16, 183, 72, 0.12)',
+    borderRadius: 16,
     overflow: 'hidden',
   },
   image: {
@@ -181,13 +180,14 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   description: {
+    ...typography.styles.body,
     fontSize: 18,
     lineHeight: 28,
-    color: '#4F6354',
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   footer: {
-    paddingBottom: spacing.xl,
+    paddingBottom: spacing.xxl,
     paddingHorizontal: spacing.lg,
     gap: spacing.xl,
   },
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
     height: 10,
     width: 10,
     borderRadius: 5,
-    backgroundColor: '#dbe6df',
+    backgroundColor: colors.border,
   },
   dotActive: {
     width: 24,

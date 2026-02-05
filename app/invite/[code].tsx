@@ -4,7 +4,6 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Button } from '@/components/ui/Button';
-import { Avatar } from '@/components/ui/Avatar';
 import { colors } from '@/constants/colors';
 import { spacing } from '@/constants/spacing';
 import { typography } from '@/constants/typography';
@@ -12,12 +11,17 @@ import { groups } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 
+function normalizeCode(param: string | string[] | undefined): string | undefined {
+  if (param == null) return undefined;
+  return Array.isArray(param) ? param[0] : param;
+}
+
 export default function AcceptInviteScreen() {
   const router = useRouter();
-  const { code } = useLocalSearchParams<{ code: string }>();
+  const params = useLocalSearchParams<{ code?: string | string[] }>();
+  const code = normalizeCode(params.code);
   const { user, isAuthenticated } = useAuth();
   const { showError, showSuccess } = useToast();
-  const [group, setGroup] = useState<Group | null>(null);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
 
@@ -34,13 +38,13 @@ export default function AcceptInviteScreen() {
   }, [code, isAuthenticated]);
 
   const loadGroupInfo = async () => {
-    if (!code) return;
+    if (!code) {
+      setLoading(false);
+      return;
+    }
 
     try {
       setLoading(true);
-      // Buscar grupo pelo inviteCode
-      // Como não temos uma API direta para buscar por inviteCode, vamos tentar entrar
-      // e se der erro de "já é membro", significa que o grupo existe
       const response = await groups.join(code);
       // Se chegou aqui, conseguiu entrar
       showSuccess('Você entrou no grupo com sucesso!');
@@ -132,12 +136,8 @@ export default function AcceptInviteScreen() {
             onPress={handleJoin}
             loading={joining}
             disabled={joining}
-            style={styles.joinButton}
           >
-            <View style={styles.joinButtonContent}>
-              <Ionicons name="checkmark-circle" size={24} color="#fff" />
-              <Text style={styles.joinButtonText}>Entrar no Grupo</Text>
-            </View>
+            Entrar no Grupo
           </Button>
         </View>
       </View>
@@ -148,18 +148,18 @@ export default function AcceptInviteScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f6f8f6',
+    backgroundColor: colors.surface,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingTop: Platform.OS === 'ios' ? 50 : spacing.lg,
     paddingBottom: spacing.md,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: colors.border,
   },
   headerTitle: {
     ...typography.styles.h2,
@@ -194,13 +194,13 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   iconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(16, 183, 72, 0.1)',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(16, 183, 72, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
   },
   title: {
     ...typography.styles.h2,
@@ -217,19 +217,5 @@ const styles = StyleSheet.create({
   buttonContainer: {
     width: '100%',
     maxWidth: 400,
-  },
-  joinButton: {
-    width: '100%',
-  },
-  joinButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-  },
-  joinButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '700',
   },
 });

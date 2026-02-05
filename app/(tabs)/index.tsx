@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Pressable, RefreshControl, StyleSheet, Platform, ActivityIndicator, TextInput } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { View, Text, ScrollView, Pressable, StyleSheet, Platform, TextInput } from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { GroupCard } from '@/components/groups/GroupCard';
+import { GroupCardSkeleton } from '@/components/groups/GroupCardSkeleton';
 import { FAB } from '@/components/ui/FAB';
 import { Avatar } from '@/components/ui/Avatar';
 import { colors } from '@/constants/colors';
@@ -19,46 +20,49 @@ export default function HomeScreen() {
   const { showError } = useToast();
   const [groupsList, setGroupsList] = useState<Group[]>([]);
   const [allGroups, setAllGroups] = useState<Group[]>([]);
-  const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const isFirstFocus = useRef(true);
+  const searchQueryRef = useRef(searchQuery);
+  searchQueryRef.current = searchQuery;
 
-  useEffect(() => {
-    loadGroups();
-  }, []);
-
-  const loadGroups = async () => {
+  const loadGroups = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const data = await groups.list();
       setAllGroups(data);
-      setGroupsList(data);
+      const q = searchQueryRef.current.trim();
+      if (q) {
+        const filtered = data.filter((group) =>
+          group.name.toLowerCase().includes(q.toLowerCase())
+        );
+        setGroupsList(filtered);
+      } else {
+        setGroupsList(data);
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erro ao carregar grupos';
       showError(errorMessage);
     } finally {
       setLoading(false);
     }
-  };
+  }, [showError]);
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    try {
-      const data = await groups.list();
-      setAllGroups(data);
-      setGroupsList(data);
-      // Se estiver buscando, reaplica o filtro
-      if (searchQuery.trim()) {
-        filterGroups(searchQuery);
+  useEffect(() => {
+    loadGroups(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isFirstFocus.current) {
+        isFirstFocus.current = false;
+        return;
       }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Erro ao atualizar grupos';
-      showError(errorMessage);
-    } finally {
-      setRefreshing(false);
-    }
-  };
+      loadGroups(true);
+    }, [loadGroups])
+  );
 
   const filterGroups = (query: string) => {
     if (!query.trim()) {
@@ -101,7 +105,7 @@ export default function HomeScreen() {
                 ]}
                 onPress={toggleSearch}
               >
-                <Ionicons name="search" size={20} color="#6b7280" />
+                <Ionicons name="search" size={20} color={colors.textSecondary} />
               </Pressable>
               <Pressable
                 onPress={() => router.push('/(tabs)/profile')}
@@ -114,11 +118,11 @@ export default function HomeScreen() {
         ) : (
           <View style={styles.searchContainer}>
             <View style={styles.searchInputContainer}>
-              <Ionicons name="search" size={20} color="#61896f" style={styles.searchIcon} />
+              <Ionicons name="search" size={20} color={colors.primary} style={styles.searchIcon} />
               <TextInput
                 style={styles.searchInput}
                 placeholder="Buscar grupo pelo nome..."
-                placeholderTextColor="#61896f"
+                placeholderTextColor={colors.textMuted}
                 value={searchQuery}
                 onChangeText={handleSearchChange}
                 autoFocus
@@ -128,7 +132,7 @@ export default function HomeScreen() {
                   onPress={() => handleSearchChange('')}
                   style={styles.clearButton}
                 >
-                  <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+                  <Ionicons name="close-circle" size={20} color={colors.textMuted} />
                 </Pressable>
               )}
             </View>
@@ -148,14 +152,7 @@ export default function HomeScreen() {
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.primary}
-            colors={[colors.primary]}
-          />
-        }
+        showsVerticalScrollIndicator={false}
       >
         <View style={styles.balanceCard}>
           <Text style={styles.balanceLabel}>Saldo Geral</Text>
@@ -172,9 +169,10 @@ export default function HomeScreen() {
         </View>
 
         {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.loadingText}>Carregando grupos...</Text>
+          <View style={styles.groupsList}>
+            {[1, 2, 3, 4, 5].map((i) => (
+              <GroupCardSkeleton key={i} />
+            ))}
           </View>
         ) : groupsList.length === 0 ? (
           <View style={styles.emptyState}>
@@ -218,28 +216,26 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f6f8f6',
+    backgroundColor: colors.surface,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingTop: Platform.OS === 'ios' ? 50 : spacing.lg,
     paddingBottom: spacing.md,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: colors.border,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
       },
-      android: {
-        elevation: 2,
-      },
+      android: { elevation: 2 },
     }),
   },
   title: {
@@ -258,7 +254,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: colors.surface,
   },
   searchContainer: {
     flex: 1,
@@ -270,12 +266,12 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f0f4f2',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderWidth: 1,
-    borderColor: '#dbe6df',
+    borderColor: colors.border,
   },
   searchIcon: {
     marginRight: spacing.xs,
@@ -295,9 +291,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   cancelButtonText: {
+    ...typography.styles.bodyBold,
     color: colors.primary,
-    fontSize: 16,
-    fontWeight: '600',
   },
   buttonPressed: {
     opacity: 0.7,
@@ -307,19 +302,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    padding: spacing.lg,
     paddingBottom: 96,
   },
   balanceCard: {
-    backgroundColor: 'rgba(16, 183, 72, 0.1)',
-    borderRadius: 12,
-    padding: spacing.md,
-    margin: spacing.md,
+    backgroundColor: 'rgba(16, 183, 72, 0.12)',
+    borderRadius: 16,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: 'rgba(16, 183, 72, 0.1)',
+    borderColor: 'rgba(16, 183, 72, 0.15)',
   },
   balanceLabel: {
-    fontSize: 14,
-    fontWeight: '500',
+    ...typography.styles.caption,
     color: colors.primary,
     textTransform: 'uppercase',
     letterSpacing: 1,
@@ -331,20 +326,18 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   balanceAmount: {
-    fontSize: 24,
-    fontWeight: '700',
+    ...typography.styles.h2,
     color: colors.text,
   },
   balanceBadge: {
-    backgroundColor: 'rgba(16, 183, 72, 0.1)',
+    backgroundColor: 'rgba(16, 183, 72, 0.15)',
     paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
+    paddingVertical: 4,
     borderRadius: 9999,
   },
   balanceBadgeText: {
+    ...typography.styles.captionBold,
     color: colors.primary,
-    fontSize: 14,
-    fontWeight: '600',
   },
   groupsList: {
     flexDirection: 'column',
@@ -366,16 +359,5 @@ const styles = StyleSheet.create({
     ...typography.styles.body,
     color: colors.textSecondary,
     textAlign: 'center',
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.xxl,
-  },
-  loadingText: {
-    ...typography.styles.body,
-    color: colors.textSecondary,
-    marginTop: spacing.md,
   },
 });

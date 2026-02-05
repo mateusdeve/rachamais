@@ -117,11 +117,11 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f6f8f6',
+    backgroundColor: colors.surface,
   },
   text: {
     marginTop: spacing.md,
-    color: colors.text,
     ...typography.styles.body,
+    color: colors.textSecondary,
   },
 });

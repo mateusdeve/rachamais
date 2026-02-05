@@ -7,38 +7,44 @@ import { invite } from '@/lib/api';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Platform,
+  Pressable,
+  ScrollView,
+  Share,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
 export default function InviteScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { showError, showSuccess } = useToast();
-  const [groupCode, setGroupCode] = useState<string>('');
   const [inviteLink, setInviteLink] = useState<string>('');
   const [groupName, setGroupName] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    if (id) {
-      loadInviteCode();
-    }
+    if (id) loadInviteCode();
   }, [id]);
 
   const loadInviteCode = async () => {
     if (!id) return;
-
     try {
       setLoading(true);
       const data = await invite.get(id);
-      setGroupCode(data.inviteCode);
-      // Garantir link e nome mesmo se a API retornar só inviteCode (ex.: backend antigo)
       const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'app.rachamais.com.br';
-      const link = data.inviteLink ?? (data.inviteCode ? `${baseUrl}/invite/${data.inviteCode}` : '');
-      const name = data.groupName ?? 'o grupo';
+      const link =
+        data.inviteLink ?? (data.inviteCode ? `${baseUrl}/invite/${data.inviteCode}` : '');
       setInviteLink(link);
-      setGroupName(name);
+      setGroupName(data.groupName ?? 'o grupo');
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Erro ao carregar código de convite';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Erro ao carregar código de convite';
       showError(errorMessage);
     } finally {
       setLoading(false);
@@ -47,58 +53,68 @@ export default function InviteScreen() {
 
   const handleCopy = async () => {
     if (!inviteLink) return;
-
     try {
-      // Tenta usar expo-clipboard se disponível
       const Clipboard = await import('expo-clipboard').catch(() => null);
       if (Clipboard) {
         await Clipboard.setStringAsync(inviteLink);
-        showSuccess('Link copiado para a área de transferência!');
+        showSuccess('Link copiado!');
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
       } else {
-        // Fallback: mostra o link em um alerta para copiar manualmente
-        Alert.alert(
-          'Link de Convite',
-          `Link: ${inviteLink}\n\nCopie o link acima.`,
-          [{ text: 'OK' }]
-        );
+        Alert.alert('Link de Convite', `Link: ${inviteLink}\n\nCopie o link acima.`, [
+          { text: 'OK' },
+        ]);
       }
-    } catch (error) {
-      // Fallback em caso de erro
-      Alert.alert(
-        'Link de Convite',
-        `Link: ${inviteLink}\n\nCopie o link acima.`,
-        [{ text: 'OK' }]
-      );
+    } catch {
+      Alert.alert('Link de Convite', `Link: ${inviteLink}\n\nCopie o link acima.`, [
+        { text: 'OK' },
+      ]);
     }
   };
 
   const handleShare = async () => {
     if (!inviteLink || !groupName) return;
-
     try {
       const result = await Share.share({
         message: `Você foi convidado para o grupo "${groupName}" no RachaMais!\n\nClique no link para entrar: ${inviteLink}`,
         title: `Convite para ${groupName}`,
-        url: inviteLink, // iOS pode usar isso
+        url: inviteLink,
       });
-
       if (result.action === Share.sharedAction) {
-        showSuccess('Convite compartilhado com sucesso!');
+        showSuccess('Convite compartilhado!');
       }
-    } catch (error: any) {
-      showError(error.message || 'Erro ao compartilhar convite');
+    } catch (error: unknown) {
+      showError(error instanceof Error ? error.message : 'Erro ao compartilhar');
     }
   };
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Pressable
+            onPress={() => router.back()}
+            style={({ pressed }) => [styles.headerButton, pressed && styles.buttonPressed]}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </Pressable>
+          <Text style={styles.headerTitle}>Convidar</Text>
+          <View style={styles.headerButton} />
+        </View>
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Preparando link...</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Pressable
           onPress={() => router.back()}
-          style={({ pressed }) => [
-            styles.headerButton,
-            pressed && styles.buttonPressed,
-          ]}
+          style={({ pressed }) => [styles.headerButton, pressed && styles.buttonPressed]}
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
@@ -106,50 +122,67 @@ export default function InviteScreen() {
         <View style={styles.headerButton} />
       </View>
 
-      <View style={styles.content}>
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.loadingText}>Carregando código...</Text>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.hero}>
+          <View style={styles.heroIconWrap}>
+            <Ionicons name="person-add" size={40} color={colors.primary} />
           </View>
-        ) : (
-          <>
-            <View style={styles.groupInfo}>
-              <Text style={styles.groupName}>{groupName}</Text>
-              <Text style={styles.groupSubtitle}>Compartilhe o link abaixo para convidar pessoas</Text>
-            </View>
+          <Text style={styles.heroTitle}>{groupName}</Text>
+          <Text style={styles.heroSubtitle}>
+            Convide amigos para entrarem no grupo. Compartilhe o link ou copie e envie por onde
+            preferir.
+          </Text>
+        </View>
 
-            <View style={styles.linkContainer}>
-              <Text style={styles.linkLabel}>Link de Convite</Text>
-              <View style={styles.linkBox}>
-                <Text style={styles.linkText} numberOfLines={2}>
-                  {inviteLink}
-                </Text>
-              </View>
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Ionicons name="link" size={20} color={colors.textSecondary} />
+            <Text style={styles.cardTitle}>Link de convite</Text>
+          </View>
+          <Pressable
+            onPress={handleCopy}
+            style={({ pressed }) => [
+              styles.linkRow,
+              pressed && styles.linkRowPressed,
+            ]}
+          >
+            <Text style={styles.linkText} numberOfLines={1}>
+              {inviteLink}
+            </Text>
+            <View style={[styles.copyBadge, copied && styles.copyBadgeDone]}>
+              <Ionicons
+                name={copied ? 'checkmark' : 'copy-outline'}
+                size={20}
+                color={copied ? '#fff' : colors.primary}
+              />
+              <Text style={[styles.copyBadgeText, copied && styles.copyBadgeTextDone]}>
+                {copied ? 'Copiado' : 'Copiar'}
+              </Text>
             </View>
+          </Pressable>
+        </View>
 
-            <View style={styles.actions}>
-              <Button onPress={handleShare} style={styles.button} disabled={!inviteLink}>
-                <View style={styles.shareButtonContent}>
-                  <Ionicons name="share" size={20} color="#fff" />
-                  <Text style={styles.shareButtonText}>Compartilhar Link</Text>
-                </View>
-              </Button>
+        <Text style={styles.hint}>Compartilhe por WhatsApp, mensagem ou e-mail</Text>
 
-              <Pressable
-                onPress={handleCopy}
-                style={({ pressed }) => [
-                  styles.copyButton,
-                  pressed && styles.buttonPressed,
-                ]}
-              >
-                <Ionicons name="copy" size={20} color={colors.primary} />
-                <Text style={styles.copyButtonText}>Copiar Link</Text>
-              </Pressable>
+        <View style={styles.actions}>
+          <Button onPress={handleShare} disabled={!inviteLink}>
+            <View style={styles.buttonContent}>
+              <Ionicons name="share-social" size={22} color="#fff" />
+              <Text style={styles.primaryButtonText}>Compartilhar link</Text>
             </View>
-          </>
-        )}
-      </View>
+          </Button>
+          <Button variant="outline" onPress={handleCopy}>
+            <View style={styles.buttonContent}>
+              <Ionicons name="copy-outline" size={22} color={colors.primary} />
+              <Text style={styles.outlineButtonText}>Copiar link</Text>
+            </View>
+          </Button>
+        </View>
+      </ScrollView>
     </View>
   );
 }
@@ -157,7 +190,7 @@ export default function InviteScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f6f8f6',
+    backgroundColor: colors.surface,
   },
   header: {
     flexDirection: 'row',
@@ -166,12 +199,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingTop: Platform.OS === 'ios' ? 50 : spacing.lg,
     paddingBottom: spacing.md,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: colors.border,
   },
   headerTitle: {
-    ...typography.styles.h3,
+    ...typography.styles.h2,
     color: colors.text,
     flex: 1,
     textAlign: 'center',
@@ -186,90 +219,138 @@ const styles = StyleSheet.create({
     opacity: 0.7,
     transform: [{ scale: 0.95 }],
   },
-  content: {
+  loadingWrap: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: spacing.lg,
-  },
-  groupInfo: {
     alignItems: 'center',
-    marginBottom: spacing.xl,
-  },
-  groupName: {
-    ...typography.styles.h2,
-    color: colors.text,
-    textAlign: 'center',
-    marginBottom: spacing.xs,
-  },
-  groupSubtitle: {
-    ...typography.styles.body,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-  linkContainer: {
-    width: '100%',
-    marginBottom: spacing.xl,
-  },
-  linkLabel: {
-    ...typography.styles.bodyBold,
-    color: colors.text,
-    marginBottom: spacing.sm,
-  },
-  linkBox: {
-    backgroundColor: 'rgba(16, 183, 72, 0.1)',
-    borderRadius: 12,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: 'rgba(16, 183, 72, 0.2)',
-  },
-  linkText: {
-    color: colors.primary,
-    fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  actions: {
-    width: '100%',
-    gap: spacing.md,
-  },
-  button: {
-    width: '100%',
-  },
-  shareButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  shareButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  copyButton: {
-    width: '100%',
-    height: 56,
-    borderWidth: 2,
-    borderColor: colors.primary,
-    backgroundColor: 'transparent',
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-  },
-  copyButtonText: {
-    color: colors.primary,
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
     gap: spacing.md,
   },
   loadingText: {
     ...typography.styles.body,
     color: colors.textSecondary,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: spacing.lg,
+    paddingBottom: spacing.xxl,
+  },
+  hero: {
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.sm,
+  },
+  heroIconWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(16, 183, 72, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
+  },
+  heroTitle: {
+    ...typography.styles.h2,
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
+  heroSubtitle: {
+    ...typography.styles.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    maxWidth: 320,
+  },
+  card: {
+    backgroundColor: colors.background,
+    borderRadius: 16,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  cardTitle: {
+    ...typography.styles.bodyBold,
+    color: colors.text,
+  },
+  linkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+  },
+  linkRowPressed: {
+    opacity: 0.9,
+  },
+  linkText: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  copyBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: 10,
+    backgroundColor: 'rgba(16, 183, 72, 0.12)',
+  },
+  copyBadgeDone: {
+    backgroundColor: colors.primary,
+  },
+  copyBadgeText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  copyBadgeTextDone: {
+    color: '#fff',
+  },
+  hint: {
+    ...typography.styles.caption,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+  },
+  actions: {
+    gap: spacing.md,
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+  },
+  primaryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  outlineButtonText: {
+    color: colors.primary,
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

@@ -105,9 +105,38 @@ eas build:view
 # Atualizar credenciais
 eas credentials
 
-# Testar build localmente (requer Xcode)
+# Testar build localmente (requer Xcode + Fastlane)
 eas build --platform ios --local
 ```
+
+### Build local: instalar Fastlane
+
+O `eas build --local --platform ios` usa **Fastlane** para rodar o build no seu Mac. Se aparecer:
+
+```text
+Fastlane is not available, make sure it's installed and in your PATH
+spawn fastlane ENOENT
+```
+
+**1. Corrigir permissões do Homebrew (se necessário):**
+
+```bash
+sudo chown -R $(whoami) /opt/homebrew /opt/homebrew/Cellar /Users/$(whoami)/Library/Logs/Homebrew
+```
+
+**2. Instalar Fastlane:**
+
+```bash
+brew install fastlane
+```
+
+**3. Conferir:**
+
+```bash
+fastlane --version
+```
+
+Depois rode de novo: `eas build --local --platform ios`.
 
 ## ⚠️ Checklist Antes de Submeter
 

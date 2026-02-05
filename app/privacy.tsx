@@ -22,7 +22,11 @@ export default function PrivacyScreen() {
         <Text style={styles.headerTitle}>Privacidade</Text>
         <View style={styles.headerButton} />
       </View>
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={styles.paragraph}>
           O RachaMais coleta apenas os dados necessários para o funcionamento do app: e-mail, nome e
           informações dos grupos e despesas que você cria ou participa.
@@ -38,7 +42,7 @@ export default function PrivacyScreen() {
           onPress={() => Linking.openURL(PRIVACY_URL)}
           style={({ pressed }) => [styles.linkButton, pressed && styles.linkPressed]}
         >
-          <Ionicons name="open-outline" size={20} color="#fff" />
+          <Ionicons name="open-outline" size={20} color={colors.background} />
           <Text style={styles.linkButtonText}>Abrir política de privacidade</Text>
         </Pressable>
       </ScrollView>
@@ -47,23 +51,39 @@ export default function PrivacyScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f6f8f6' },
+  container: {
+    flex: 1,
+    backgroundColor: colors.surface,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingTop: Platform.OS === 'ios' ? 50 : spacing.lg,
     paddingBottom: spacing.md,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: colors.border,
   },
-  headerTitle: { ...typography.styles.h2, color: colors.text, flex: 1, textAlign: 'center' as const },
-  headerButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: {
+    ...typography.styles.h2,
+    color: colors.text,
+    flex: 1,
+    textAlign: 'center',
+  },
+  headerButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   buttonPressed: { opacity: 0.7 },
   scroll: { flex: 1 },
-  scrollContent: { padding: spacing.lg, paddingBottom: spacing.xxl },
+  scrollContent: {
+    padding: spacing.lg,
+    paddingBottom: spacing.xxl,
+  },
   paragraph: {
     ...typography.styles.body,
     color: colors.text,
@@ -78,9 +98,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
-    borderRadius: 12,
+    borderRadius: 16,
     marginTop: spacing.lg,
   },
-  linkButtonText: { ...typography.styles.bodyBold, color: '#fff' },
+  linkButtonText: {
+    ...typography.styles.bodyBold,
+    color: colors.background,
+  },
   linkPressed: { opacity: 0.9 },
 });

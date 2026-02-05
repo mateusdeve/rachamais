@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Pressable, RefreshControl, StyleSheet, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '@/components/ui/Avatar';
+import { ActivitySkeleton } from '@/components/activity/ActivitySkeleton';
 import { colors } from '@/constants/colors';
 import { spacing } from '@/constants/spacing';
 import { typography } from '@/constants/typography';
@@ -13,7 +14,6 @@ export default function ActivityScreen() {
   const router = useRouter();
   const { showError } = useToast();
   const [activitiesList, setActivitiesList] = useState<Activity[]>([]);
-  const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,13 +30,7 @@ export default function ActivityScreen() {
       showError(errorMessage);
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
-  };
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadActivities();
   };
 
   const formatDate = (dateString: string) => {
@@ -117,12 +111,7 @@ export default function ActivityScreen() {
   }, {} as Record<string, Activity[]>);
 
   if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Carregando atividades...</Text>
-      </View>
-    );
+    return <ActivitySkeleton />;
   }
 
   return (
@@ -134,14 +123,7 @@ export default function ActivityScreen() {
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.primary}
-            colors={[colors.primary]}
-          />
-        }
+        showsVerticalScrollIndicator={false}
       >
         {activitiesList.length === 0 ? (
           <View style={styles.emptyState}>
@@ -202,36 +184,23 @@ export default function ActivityScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f6f8f6',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f6f8f6',
-  },
-  loadingText: {
-    marginTop: spacing.md,
-    color: colors.textSecondary,
-    ...typography.styles.body,
+    backgroundColor: colors.surface,
   },
   header: {
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingTop: Platform.OS === 'ios' ? 50 : spacing.lg,
     paddingBottom: spacing.md,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: colors.border,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
       },
-      android: {
-        elevation: 2,
-      },
+      android: { elevation: 2 },
     }),
   },
   title: {
@@ -242,7 +211,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xxl,
   },
   emptyState: {
     flex: 1,
@@ -263,7 +233,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   activitiesList: {
-    paddingHorizontal: spacing.md,
     paddingTop: spacing.md,
   },
   dateSection: {
@@ -277,25 +246,23 @@ const styles = StyleSheet.create({
     textTransform: 'capitalize',
   },
   activityCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: spacing.md,
+    backgroundColor: colors.background,
+    borderRadius: 16,
+    padding: spacing.lg,
     marginBottom: spacing.sm,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
       },
-      android: {
-        elevation: 1,
-      },
+      android: { elevation: 2 },
     }),
   },
   activityCardPressed: {
-    opacity: 0.9,
-    backgroundColor: '#F9FAFB',
+    opacity: 0.95,
+    backgroundColor: colors.surface,
   },
   activityContent: {
     flexDirection: 'row',
@@ -324,7 +291,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   activityTime: {
-    fontSize: 12,
+    ...typography.styles.small,
     color: colors.textMuted,
   },
   activityGroup: {
@@ -336,7 +303,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   groupName: {
-    fontSize: 14,
+    ...typography.styles.caption,
     color: colors.textSecondary,
   },
 });

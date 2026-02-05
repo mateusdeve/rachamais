@@ -64,7 +64,11 @@ export default function LoginScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.contentContainer}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.formContainer}>
         <View style={styles.header}>
           <View style={styles.logoContainer}>
@@ -119,7 +123,7 @@ export default function LoginScreen() {
                 <Ionicons
                   name={showPassword ? 'eye-off' : 'eye'}
                   size={20}
-                  color="#61896f"
+                  color={colors.primary}
                 />
               </Pressable>
             }
@@ -177,17 +181,18 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f6f8f6',
+    backgroundColor: colors.surface,
   },
   contentContainer: {
     flexGrow: 1,
     paddingVertical: spacing.xl,
+    paddingBottom: spacing.xxl,
   },
   formContainer: {
     width: '100%',
     maxWidth: 480,
     alignSelf: 'center',
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
   },
   header: {
     alignItems: 'center',
@@ -212,9 +217,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   subtitle: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#61896f',
+    ...typography.styles.body,
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   form: {
@@ -252,12 +256,11 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#dbe6df',
+    backgroundColor: colors.border,
   },
   dividerText: {
-    color: '#61896f',
-    fontSize: 12,
-    fontWeight: '500',
+    ...typography.styles.caption,
+    color: colors.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -267,40 +270,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     borderWidth: 1,
-    borderColor: '#dbe6df',
+    borderColor: colors.border,
     paddingVertical: spacing.md,
-    borderRadius: 8,
+    borderRadius: 12,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
       },
-      android: {
-        elevation: 2,
-      },
+      android: { elevation: 2 },
     }),
   },
   googleButtonPressed: {
-    opacity: 0.8,
-    backgroundColor: '#F9FAFB',
+    opacity: 0.9,
+    backgroundColor: colors.surface,
   },
   googleButtonText: {
+    ...typography.styles.bodyBold,
     color: colors.text,
-    fontWeight: '600',
-    fontSize: 16,
   },
   footer: {
     marginTop: spacing.xl,
     alignItems: 'center',
-    paddingBottom: spacing.xl,
+    paddingBottom: spacing.xxl,
   },
   footerText: {
-    color: '#61896f',
-    fontSize: 14,
+    ...typography.styles.body,
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   footerLink: {

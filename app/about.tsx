@@ -1,4 +1,12 @@
-import { View, Text, Pressable, StyleSheet, Platform, Linking } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  Pressable,
+  StyleSheet,
+  Platform,
+  Linking,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
@@ -24,50 +32,123 @@ export default function AboutScreen() {
         <Text style={styles.headerTitle}>Sobre o app</Text>
         <View style={styles.headerButton} />
       </View>
-      <View style={styles.content}>
-        <Text style={styles.appName}>RachaMais</Text>
-        <Text style={styles.tagline}>Divida contas sem complicação</Text>
-        <Text style={styles.version}>Versão {APP_VERSION}</Text>
-        <Pressable
-          onPress={() => Linking.openURL(PRIVACY_URL)}
-          style={({ pressed }) => [styles.linkRow, pressed && styles.linkPressed]}
-        >
-          <Ionicons name="document-text-outline" size={20} color={colors.primary} />
-          <Text style={styles.linkText}>Política de privacidade</Text>
-          <Ionicons name="open-outline" size={18} color={colors.textMuted} />
-        </Pressable>
-      </View>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.hero}>
+          <View style={styles.heroIconWrap}>
+            <Text style={styles.heroEmoji}>💰</Text>
+          </View>
+          <Text style={styles.appName}>RachaMais</Text>
+          <Text style={styles.tagline}>Divida contas sem complicação</Text>
+          <Text style={styles.version}>Versão {APP_VERSION}</Text>
+        </View>
+        <View style={styles.card}>
+          <Pressable
+            onPress={() => Linking.openURL(PRIVACY_URL)}
+            style={({ pressed }) => [styles.linkRow, pressed && styles.linkPressed]}
+          >
+            <Ionicons name="document-text-outline" size={22} color={colors.primary} />
+            <Text style={styles.linkText}>Política de privacidade</Text>
+            <Ionicons name="open-outline" size={18} color={colors.textMuted} />
+          </Pressable>
+        </View>
+      </ScrollView>
     </View>
   );
 }
 
+const cardShadow = Platform.select({
+  ios: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+  },
+  android: { elevation: 2 },
+});
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f6f8f6' },
+  container: {
+    flex: 1,
+    backgroundColor: colors.surface,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingTop: Platform.OS === 'ios' ? 50 : spacing.lg,
     paddingBottom: spacing.md,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: colors.border,
   },
-  headerTitle: { ...typography.styles.h2, color: colors.text, flex: 1, textAlign: 'center' as const },
-  headerButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: {
+    ...typography.styles.h2,
+    color: colors.text,
+    flex: 1,
+    textAlign: 'center',
+  },
+  headerButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   buttonPressed: { opacity: 0.7 },
-  content: { flex: 1, padding: spacing.lg, alignItems: 'center' },
-  appName: { ...typography.styles.h1, color: colors.text, marginBottom: spacing.xs },
-  tagline: { ...typography.styles.body, color: colors.textMuted, marginBottom: spacing.lg },
-  version: { ...typography.styles.caption, color: colors.textSecondary, marginBottom: spacing.xl },
+  scroll: { flex: 1 },
+  scrollContent: {
+    padding: spacing.lg,
+    paddingBottom: spacing.xxl,
+  },
+  hero: {
+    alignItems: 'center',
+    marginBottom: spacing.xl,
+  },
+  heroIconWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(16, 183, 72, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  heroEmoji: {
+    fontSize: 40,
+  },
+  appName: {
+    ...typography.styles.h1,
+    color: colors.text,
+    marginBottom: spacing.xs,
+  },
+  tagline: {
+    ...typography.styles.body,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+  },
+  version: {
+    ...typography.styles.caption,
+    color: colors.textMuted,
+  },
+  card: {
+    backgroundColor: colors.background,
+    borderRadius: 16,
+    padding: spacing.lg,
+    ...cardShadow,
+  },
   linkRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
+    gap: spacing.md,
   },
-  linkText: { ...typography.styles.body, color: colors.primary, fontWeight: '600' as const },
-  linkPressed: { opacity: 0.7 },
+  linkText: {
+    ...typography.styles.bodyBold,
+    color: colors.primary,
+    flex: 1,
+  },
+  linkPressed: { opacity: 0.9 },
 });

@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { colors } from '@/constants/colors';
@@ -11,6 +12,9 @@ import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
+const RECENT_MEMBERS_KEY = '@rachamais/recentGroupMembers';
+const MAX_RECENT_MEMBERS = 3;
+
 const emojis = ['🏖️', '🍖', '✈️', '⚽', '🔑', '🎁', '🏠', '🍕', '🎉', '🎮', '🎬', '🏋️'];
 
 export default function CreateGroupScreen() {
@@ -21,8 +25,23 @@ export default function CreateGroupScreen() {
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
+  const [recentMembers, setRecentMembers] = useState<User[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(RECENT_MEMBERS_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw) as User[];
+          setRecentMembers(Array.isArray(parsed) ? parsed.slice(0, MAX_RECENT_MEMBERS) : []);
+        }
+      } catch {
+        setRecentMembers([]);
+      }
+    })();
+  }, []);
 
   // Debounce para busca de usuários
   useEffect(() => {
@@ -65,6 +84,15 @@ export default function CreateGroupScreen() {
     );
   };
 
+  const saveRecentMembers = (added: User[]) => {
+    const merged = [
+      ...added,
+      ...recentMembers.filter((u) => !added.some((a) => a.id === u.id)),
+    ].slice(0, MAX_RECENT_MEMBERS);
+    setRecentMembers(merged);
+    AsyncStorage.setItem(RECENT_MEMBERS_KEY, JSON.stringify(merged));
+  };
+
   const handleCreate = async () => {
     if (!groupName.trim()) {
       showError('Nome do grupo é obrigatório');
@@ -79,6 +107,16 @@ export default function CreateGroupScreen() {
         emoji: selectedEmoji,
         memberIds: selectedMembers.length > 0 ? selectedMembers : undefined,
       });
+
+      if (selectedMembers.length > 0) {
+        const added = selectedMembers
+          .map(
+            (id) =>
+              searchResults.find((u) => u.id === id) || recentMembers.find((u) => u.id === id)
+          )
+          .filter((u): u is User => Boolean(u));
+        if (added.length > 0) saveRecentMembers(added);
+      }
 
       showSuccess('Grupo criado com sucesso!');
       router.replace(`/group/${newGroup.id}`);
@@ -106,14 +144,18 @@ export default function CreateGroupScreen() {
         <View style={styles.headerButton} />
       </View>
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.section}>
           <Text style={styles.label}>Nome do grupo</Text>
           <View style={styles.nameInputContainer}>
             <TextInput
               style={styles.nameInput}
               placeholder="Ex: Viagem de Férias, Churrasco..."
-              placeholderTextColor="#61896f"
+              placeholderTextColor={colors.textMuted}
               value={groupName}
               onChangeText={setGroupName}
             />
@@ -152,16 +194,58 @@ export default function CreateGroupScreen() {
 
           <View style={styles.searchContainer}>
             <View style={styles.searchIconContainer}>
-              <Ionicons name="search" size={20} color="#61896f" />
+              <Ionicons name="search" size={20} color={colors.primary} />
             </View>
             <TextInput
               style={styles.searchInput}
               placeholder="Buscar amigos pelo nome..."
-              placeholderTextColor="#61896f"
+              placeholderTextColor={colors.textMuted}
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
           </View>
+
+          {recentMembers.length > 0 && searchQuery.trim().length < 2 && (
+            <View style={styles.recentSection}>
+              <Text style={styles.recentLabel}>Últimos amigos adicionados</Text>
+              <View style={styles.recentList}>
+                {recentMembers.map((member) => {
+                  const isSelected = selectedMembers.includes(member.id);
+                  return (
+                    <Pressable
+                      key={member.id}
+                      onPress={() => toggleMember(member.id)}
+                      style={({ pressed }) => [
+                        styles.recentCard,
+                        isSelected && styles.recentCardSelected,
+                        pressed && styles.buttonPressed,
+                      ]}
+                    >
+                      <Avatar src={member.avatarUrl || undefined} name={member.name} size={40} />
+                      <Text style={styles.recentName} numberOfLines={1}>
+                        {member.name}
+                      </Text>
+                      <View
+                        style={[
+                          styles.recentBadge,
+                          isSelected ? styles.recentBadgeSelected : undefined,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.recentBadgeText,
+                            isSelected ? styles.recentBadgeTextSelected : undefined,
+                          ]}
+                        >
+                          {isSelected ? '✓' : '+'}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          )}
         </View>
 
         <View style={styles.membersList}>
@@ -230,18 +314,18 @@ export default function CreateGroupScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingTop: Platform.OS === 'ios' ? 50 : spacing.lg,
     paddingBottom: spacing.md,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: colors.border,
   },
   headerTitle: {
     ...typography.styles.h2,
@@ -263,10 +347,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    paddingHorizontal: spacing.lg,
     paddingBottom: 100,
   },
   section: {
-    paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
   },
   label: {
@@ -277,25 +361,24 @@ const styles = StyleSheet.create({
   nameInputContainer: {
     flexDirection: 'row',
     alignItems: 'stretch',
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#dbe6df',
+    borderColor: colors.border,
     overflow: 'hidden',
+    backgroundColor: colors.background,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
       },
-      android: {
-        elevation: 1,
-      },
+      android: { elevation: 2 },
     }),
   },
   nameInput: {
     flex: 1,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     fontSize: 16,
     color: colors.text,
@@ -306,8 +389,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderLeftWidth: 1,
-    borderLeftColor: '#dbe6df',
-    backgroundColor: '#f0f4f2',
+    borderLeftColor: colors.border,
+    backgroundColor: colors.surface,
   },
   emojiText: {
     fontSize: 24,
@@ -320,8 +403,8 @@ const styles = StyleSheet.create({
   emojiButton: {
     width: 48,
     height: 48,
-    borderRadius: 8,
-    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -340,28 +423,25 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   membersCount: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#61896f',
+    ...typography.styles.captionBold,
+    color: colors.textSecondary,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 12,
-    backgroundColor: '#f0f4f2',
+    borderRadius: 16,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: 'transparent',
+    borderColor: colors.border,
     minHeight: 48,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
       },
-      android: {
-        elevation: 1,
-      },
+      android: { elevation: 2 },
     }),
   },
   searchIconContainer: {
@@ -376,19 +456,78 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
   },
-  membersList: {
+  recentSection: {
+    marginTop: spacing.md,
+  },
+  recentLabel: {
+    ...typography.styles.captionBold,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+  },
+  recentList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  recentCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.surface,
+    paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    maxWidth: '100%',
+  },
+  recentCardSelected: {
+    backgroundColor: 'rgba(16, 183, 72, 0.12)',
+    borderColor: colors.primary,
+  },
+  recentName: {
+    ...typography.styles.captionBold,
+    color: colors.text,
+    maxWidth: 100,
+  },
+  recentBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recentBadgeSelected: {
+    backgroundColor: colors.primary,
+  },
+  recentBadgeText: {
+    ...typography.styles.captionBold,
+    color: colors.text,
+  },
+  recentBadgeTextSelected: {
+    color: colors.background,
+  },
+  membersList: {
     gap: spacing.xs,
   },
   memberCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#fff',
-    padding: spacing.md,
-    borderRadius: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    backgroundColor: colors.background,
+    padding: spacing.lg,
+    borderRadius: 16,
+    marginBottom: spacing.sm,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+      },
+      android: { elevation: 2 },
+    }),
   },
   memberInfo: {
     flexDirection: 'row',
@@ -405,24 +544,23 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   memberUsername: {
-    fontSize: 14,
-    color: '#61896f',
+    ...typography.styles.caption,
+    color: colors.textSecondary,
   },
   memberButton: {
     minWidth: 84,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
-    borderRadius: 8,
-    backgroundColor: '#f0f4f2',
+    borderRadius: 12,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   memberButtonSelected: {
-    backgroundColor: '#FEE2E2',
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
   },
   memberButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
+    ...typography.styles.captionBold,
     color: colors.text,
   },
   memberButtonTextSelected: {
@@ -453,20 +591,18 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    padding: spacing.md,
-    backgroundColor: '#fff',
+    padding: spacing.lg,
+    backgroundColor: colors.background,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: colors.border,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
       },
-      android: {
-        elevation: 8,
-      },
+      android: { elevation: 8 },
     }),
   },
 });

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput, StyleSheet, Platform, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, ScrollView, Pressable, TextInput, StyleSheet, Platform, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
+import { SettingsSkeleton } from '@/components/group/SettingsSkeleton';
 import { colors } from '@/constants/colors';
 import { spacing } from '@/constants/spacing';
 import { typography } from '@/constants/typography';
@@ -15,7 +16,8 @@ const emojis = ['🏖️', '🍖', '✈️', '⚽', '🔑', '🎁', '🏠', '�
 
 export default function GroupSettingsScreen() {
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id: string }>();
+  const id = typeof params.id === 'string' ? params.id : params.id?.[0] ?? null;
   const { user } = useAuth();
   const { showError, showSuccess } = useToast();
   const [group, setGroup] = useState<Group | null>(null);
@@ -169,20 +171,29 @@ export default function GroupSettingsScreen() {
   };
 
   if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Carregando configurações...</Text>
-      </View>
-    );
+    return <SettingsSkeleton />;
   }
 
   if (!group) {
     return (
-      <View style={styles.errorContainer}>
-        <Ionicons name="alert-circle" size={48} color={colors.error} />
-        <Text style={styles.errorText}>Grupo não encontrado</Text>
-        <Button onPress={() => router.back()}>Voltar</Button>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.headerButton, pressed && styles.buttonPressed]}>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </Pressable>
+          <Text style={styles.headerTitle}>Configurações</Text>
+          <View style={styles.headerButton} />
+        </View>
+        <View style={styles.errorWrap}>
+          <View style={styles.errorIconWrap}>
+            <Ionicons name="alert-circle-outline" size={48} color={colors.error} />
+          </View>
+          <Text style={styles.errorTitle}>Grupo não encontrado</Text>
+          <Text style={styles.errorSubtitle}>Volte e tente novamente.</Text>
+          <Button onPress={() => router.back()} variant="outline">
+            Voltar
+          </Button>
+        </View>
       </View>
     );
   }
@@ -190,174 +201,141 @@ export default function GroupSettingsScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Pressable
-          onPress={() => router.back()}
-          style={({ pressed }) => [
-            styles.headerButton,
-            pressed && styles.buttonPressed,
-          ]}
-        >
+        <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.headerButton, pressed && styles.buttonPressed]}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
         <Text style={styles.headerTitle}>Configurações</Text>
         <View style={styles.headerButton} />
       </View>
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {/* Informações do Grupo */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Informações do Grupo</Text>
-            {isAdmin && !isEditing && (
-              <Pressable
-                onPress={() => setIsEditing(true)}
-                style={({ pressed }) => [
-                  styles.editButton,
-                  pressed && styles.buttonPressed,
-                ]}
-              >
-                <Ionicons name="create" size={18} color={colors.primary} />
-                <Text style={styles.editButtonText}>Editar</Text>
-              </Pressable>
-            )}
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Hero: Grupo */}
+        <View style={styles.hero}>
+          <View style={styles.heroEmojiWrap}>
+            <Text style={styles.heroEmoji}>{group.emoji || '👥'}</Text>
           </View>
+          <Text style={styles.heroName}>{group.name}</Text>
+          {group.description ? (
+            <Text style={styles.heroDescription}>{group.description}</Text>
+          ) : null}
+          {isAdmin && !isEditing && (
+            <Pressable onPress={() => setIsEditing(true)} style={({ pressed }) => [styles.heroEditBtn, pressed && styles.buttonPressed]}>
+              <Ionicons name="pencil" size={18} color={colors.primary} />
+              <Text style={styles.heroEditText}>Editar grupo</Text>
+            </Pressable>
+          )}
+        </View>
 
-          {isEditing ? (
-            <View style={styles.editForm}>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Nome do grupo</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Nome do grupo"
-                  value={groupName}
-                  onChangeText={setGroupName}
-                />
+        {/* Card: Edição ou apenas info */}
+        {isEditing ? (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Editar informações</Text>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Nome do grupo</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Ex: Churrasco, Viagem..."
+                placeholderTextColor={colors.textMuted}
+                value={groupName}
+                onChangeText={setGroupName}
+              />
+            </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Emoji</Text>
+              <View style={styles.emojisContainer}>
+                {emojis.map((emoji) => (
+                  <Pressable
+                    key={emoji}
+                    onPress={() => setGroupEmoji(emoji)}
+                    style={({ pressed }) => [
+                      styles.emojiButton,
+                      groupEmoji === emoji && styles.emojiButtonSelected,
+                      pressed && styles.buttonPressed,
+                    ]}
+                  >
+                    <Text style={styles.emojiButtonText}>{emoji}</Text>
+                  </Pressable>
+                ))}
               </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Emoji</Text>
-                <View style={styles.emojisContainer}>
-                  {emojis.map((emoji) => (
-                    <Pressable
-                      key={emoji}
-                      onPress={() => setGroupEmoji(emoji)}
-                      style={({ pressed }) => [
-                        styles.emojiButton,
-                        groupEmoji === emoji && styles.emojiButtonSelected,
-                        pressed && styles.buttonPressed,
-                      ]}
-                    >
-                      <Text style={styles.emojiButtonText}>{emoji}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Descrição (opcional)</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  placeholder="Descrição do grupo"
-                  value={groupDescription}
-                  onChangeText={setGroupDescription}
-                  multiline
-                  numberOfLines={3}
-                />
-              </View>
-
-              <View style={styles.editActions}>
+            </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Descrição (opcional)</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                placeholder="Ex: Contas da viagem de julho"
+                placeholderTextColor={colors.textMuted}
+                value={groupDescription}
+                onChangeText={setGroupDescription}
+                multiline
+                numberOfLines={3}
+              />
+            </View>
+            <View style={styles.editActions}>
+              <View style={styles.editActionBtn}>
                 <Button
+                  variant="outline"
                   onPress={() => {
                     setIsEditing(false);
                     setGroupName(group.name);
                     setGroupEmoji(group.emoji || '👥');
                     setGroupDescription(group.description || '');
                   }}
-                  style={[styles.actionButton, styles.cancelButton]}
                 >
                   Cancelar
                 </Button>
-                <Button
-                  onPress={handleSave}
-                  loading={isSaving}
-                  disabled={isSaving || !groupName.trim()}
-                  style={styles.actionButton}
-                >
+              </View>
+              <View style={styles.editActionBtn}>
+                <Button onPress={handleSave} loading={isSaving} disabled={isSaving || !groupName.trim()}>
                   Salvar
                 </Button>
               </View>
             </View>
-          ) : (
-            <View style={styles.infoCard}>
-              <View style={styles.groupHeader}>
-                <Text style={styles.groupEmoji}>{group.emoji || '👥'}</Text>
-                <View style={styles.groupInfo}>
-                  <Text style={styles.groupName}>{group.name}</Text>
-                  {group.description && (
-                    <Text style={styles.groupDescription}>{group.description}</Text>
-                  )}
-                </View>
-              </View>
-            </View>
-          )}
-        </View>
+          </View>
+        ) : null}
 
         {/* Membros */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Membros ({groupMembers.length})</Text>
-            <Pressable
-              onPress={() => router.push(`/group/${id}/invite`)}
-              style={({ pressed }) => [
-                styles.inviteButton,
-                pressed && styles.buttonPressed,
-              ]}
-            >
-              <Ionicons name="person-add" size={18} color={colors.primary} />
+            <Text style={styles.sectionTitle}>Membros</Text>
+            <View style={styles.sectionBadge}>
+              <Text style={styles.sectionBadgeText}>{groupMembers.length}</Text>
+            </View>
+            <Pressable onPress={() => id && router.push(`/group/${id}/invite`)} style={({ pressed }) => [styles.inviteButton, pressed && styles.buttonPressed]}>
+              <Ionicons name="person-add-outline" size={20} color={colors.primary} />
               <Text style={styles.inviteButtonText}>Convidar</Text>
             </Pressable>
           </View>
-
-          <View style={styles.membersList}>
-            {groupMembers.map((member) => {
+          <View style={styles.membersCard}>
+            {groupMembers.map((member, index) => {
               const isCurrentUser = member.userId === user?.id;
               const canRemove = isAdmin && !isCurrentUser && member.userId !== group.createdById;
-              
+              const isCreator = member.userId === group.createdById;
+              const isAdminRole = member.role === 'ADMIN' && !isCreator;
               return (
-                <View key={member.userId} style={styles.memberItem}>
-                  <View style={styles.memberInfo}>
-                    <Avatar
-                      src={member.user.avatarUrl || undefined}
-                      name={member.user.name}
-                      size={48}
-                    />
-                    <View style={styles.memberDetails}>
-                      <View style={styles.memberNameRow}>
-                        <Text style={styles.memberName}>{member.user.name}</Text>
-                        {member.userId === group.createdById && (
-                          <View style={styles.badge}>
-                            <Text style={styles.badgeText}>Criador</Text>
-                          </View>
-                        )}
-                        {member.role === 'ADMIN' && member.userId !== group.createdById && (
-                          <View style={[styles.badge, styles.adminBadge]}>
-                            <Text style={styles.badgeText}>Admin</Text>
-                          </View>
-                        )}
-                      </View>
-                      <Text style={styles.memberEmail}>{member.user.email}</Text>
+                <View key={member.userId} style={[styles.memberRow, index === groupMembers.length - 1 && styles.memberRowLast]}>
+                  <Avatar src={member.user.avatarUrl || undefined} name={member.user.name} size={44} />
+                  <View style={styles.memberDetails}>
+                    <View style={styles.memberNameRow}>
+                      <Text style={styles.memberName}>{member.user.name}</Text>
+                      {isCreator && (
+                        <View style={styles.badgeCriador}>
+                          <Text style={styles.badgeCriadorText}>Criador</Text>
+                        </View>
+                      )}
+                      {isAdminRole && (
+                        <View style={styles.badgeAdmin}>
+                          <Text style={styles.badgeAdminText}>Admin</Text>
+                        </View>
+                      )}
                     </View>
+                    <Text style={styles.memberEmail} numberOfLines={1}>{member.user.email}</Text>
                   </View>
-                  {canRemove && (
-                    <Pressable
-                      onPress={() => handleDeleteMember(member.userId, member.user.name)}
-                      style={({ pressed }) => [
-                        styles.removeButton,
-                        pressed && styles.buttonPressed,
-                      ]}
-                    >
-                      <Ionicons name="close-circle" size={24} color={colors.error} />
+                  {canRemove ? (
+                    <Pressable onPress={() => handleDeleteMember(member.userId, member.user.name)} style={({ pressed }) => [styles.removeBtn, pressed && styles.buttonPressed]}>
+                      <Ionicons name="close-circle-outline" size={24} color={colors.textMuted} />
                     </Pressable>
+                  ) : (
+                    <View style={styles.removeBtnPlaceholder} />
                   )}
                 </View>
               );
@@ -368,47 +346,26 @@ export default function GroupSettingsScreen() {
         {/* Ações */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Ações</Text>
-          
-          <Pressable
-            onPress={handleLeaveGroup}
-            style={({ pressed }) => [
-              styles.actionCard,
-              pressed && styles.cardPressed,
-            ]}
-          >
-            <View style={styles.actionContent}>
-              <View style={[styles.actionIcon, styles.leaveIcon]}>
-                <Ionicons name="log-out" size={20} color={colors.error} />
-              </View>
-              <View style={styles.actionTextContainer}>
-                <Text style={styles.actionTitle}>Sair do grupo</Text>
-                <Text style={styles.actionDescription}>
-                  Você será removido do grupo e perderá acesso a todas as informações
-                </Text>
-              </View>
+          <Pressable onPress={handleLeaveGroup} style={({ pressed }) => [styles.actionCard, pressed && styles.cardPressed]}>
+            <View style={styles.actionIconWrap}>
+              <Ionicons name="log-out-outline" size={22} color={colors.error} />
             </View>
+            <View style={styles.actionTextWrap}>
+              <Text style={styles.actionTitle}>Sair do grupo</Text>
+              <Text style={styles.actionDescription}>Você será removido e perderá acesso às informações do grupo.</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </Pressable>
-
           {isCreator && (
-            <Pressable
-              onPress={handleDeleteGroup}
-              style={({ pressed }) => [
-                styles.actionCard,
-                styles.deleteCard,
-                pressed && styles.cardPressed,
-              ]}
-            >
-              <View style={styles.actionContent}>
-                <View style={[styles.actionIcon, styles.deleteIcon]}>
-                  <Ionicons name="trash" size={20} color={colors.error} />
-                </View>
-                <View style={styles.actionTextContainer}>
-                  <Text style={[styles.actionTitle, styles.deleteTitle]}>Excluir grupo</Text>
-                  <Text style={styles.actionDescription}>
-                    Esta ação não pode ser desfeita. Todos os dados do grupo serão perdidos.
-                  </Text>
-                </View>
+            <Pressable onPress={handleDeleteGroup} style={({ pressed }) => [styles.actionCard, styles.actionCardDanger, pressed && styles.cardPressed]}>
+              <View style={[styles.actionIconWrap, styles.actionIconWrapDanger]}>
+                <Ionicons name="trash-outline" size={22} color={colors.error} />
               </View>
+              <View style={styles.actionTextWrap}>
+                <Text style={[styles.actionTitle, styles.actionTitleDanger]}>Excluir grupo</Text>
+                <Text style={styles.actionDescription}>Irreversível. Todos os dados do grupo serão perdidos.</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
             </Pressable>
           )}
         </View>
@@ -417,10 +374,15 @@ export default function GroupSettingsScreen() {
   );
 }
 
+const cardShadow = Platform.select({
+  ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8 },
+  android: { elevation: 2 },
+});
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f6f8f6',
+    backgroundColor: colors.surface,
   },
   header: {
     flexDirection: 'row',
@@ -429,9 +391,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingTop: Platform.OS === 'ios' ? 50 : spacing.lg,
     paddingBottom: spacing.md,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: colors.border,
   },
   headerTitle: {
     ...typography.styles.h2,
@@ -449,147 +411,200 @@ const styles = StyleSheet.create({
     opacity: 0.7,
     transform: [{ scale: 0.95 }],
   },
-  scrollView: {
+  scrollView: { flex: 1 },
+  scrollContent: { padding: spacing.lg, paddingBottom: spacing.xxl },
+  errorWrap: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
   },
-  scrollContent: {
-    paddingBottom: spacing.xl,
-  },
-  loadingContainer: {
-    flex: 1,
+  errorIconWrap: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f6f8f6',
+    marginBottom: spacing.lg,
   },
-  loadingText: {
+  errorTitle: {
+    ...typography.styles.h3,
+    color: colors.text,
+    marginBottom: spacing.xs,
+    textAlign: 'center',
+  },
+  errorSubtitle: {
     ...typography.styles.body,
     color: colors.textSecondary,
-    marginTop: spacing.md,
-  },
-  errorContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.xl,
-    backgroundColor: '#f6f8f6',
-  },
-  errorText: {
-    ...typography.styles.h3,
-    color: colors.error,
-    marginTop: spacing.md,
     marginBottom: spacing.lg,
     textAlign: 'center',
   },
-  section: {
+  hero: {
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.sm,
+  },
+  heroEmojiWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(16, 183, 72, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  heroEmoji: { fontSize: 40 },
+  heroName: {
+    ...typography.styles.h2,
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: spacing.xs,
+  },
+  heroDescription: {
+    ...typography.styles.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: spacing.md,
+  },
+  heroEditBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.lg,
+    borderRadius: 10,
+    backgroundColor: 'rgba(16, 183, 72, 0.1)',
+  },
+  heroEditText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  card: {
+    backgroundColor: colors.background,
+    borderRadius: 16,
+    padding: spacing.lg,
+    marginBottom: spacing.xl,
+    ...cardShadow,
+  },
+  cardTitle: {
+    ...typography.styles.bodyBold,
+    color: colors.text,
+    marginBottom: spacing.md,
+  },
+  section: {
+    marginBottom: spacing.xl,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
+    gap: spacing.sm,
   },
   sectionTitle: {
     ...typography.styles.h3,
     color: colors.text,
   },
-  editButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
+  sectionBadge: {
+    backgroundColor: colors.border,
     paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
+    paddingVertical: 2,
+    borderRadius: 8,
   },
-  editButtonText: {
-    color: colors.primary,
-    fontSize: 14,
+  sectionBadgeText: {
+    fontSize: 12,
     fontWeight: '600',
+    color: colors.textSecondary,
   },
   inviteButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    paddingHorizontal: spacing.sm,
+    marginLeft: 'auto',
     paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
   },
   inviteButtonText: {
-    color: colors.primary,
     fontSize: 14,
     fontWeight: '600',
+    color: colors.primary,
   },
-  infoCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: spacing.md,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 1,
-      },
-    }),
+  membersCard: {
+    backgroundColor: colors.background,
+    borderRadius: 16,
+    overflow: 'hidden',
+    ...cardShadow,
   },
-  groupHeader: {
+  memberRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-  },
-  groupEmoji: {
-    fontSize: 48,
-  },
-  groupInfo: {
-    flex: 1,
-  },
-  groupName: {
-    ...typography.styles.h3,
-    color: colors.text,
-    marginBottom: spacing.xs,
-  },
-  groupDescription: {
-    ...typography.styles.body,
-    color: colors.textSecondary,
-  },
-  editForm: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
     padding: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
     gap: spacing.md,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 1,
-      },
-    }),
   },
-  inputGroup: {
-    gap: spacing.sm,
+  memberRowLast: { borderBottomWidth: 0 },
+  memberDetails: { flex: 1, minWidth: 0 },
+  memberNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    marginBottom: 2,
   },
-  label: {
+  memberName: {
     ...typography.styles.bodyBold,
     color: colors.text,
   },
+  memberEmail: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  badgeCriador: {
+    backgroundColor: 'rgba(16, 183, 72, 0.12)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  badgeCriadorText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.primary,
+    textTransform: 'uppercase',
+  },
+  badgeAdmin: {
+    backgroundColor: 'rgba(59, 130, 246, 0.12)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  badgeAdminText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#3B82F6',
+    textTransform: 'uppercase',
+  },
+  removeBtn: { padding: spacing.xs },
+  removeBtnPlaceholder: { width: 32 },
+  inputGroup: { marginBottom: spacing.md },
+  label: {
+    ...typography.styles.bodyBold,
+    color: colors.text,
+    marginBottom: spacing.xs,
+  },
   input: {
     borderWidth: 1,
-    borderColor: '#dbe6df',
-    borderRadius: 8,
+    borderColor: colors.border,
+    borderRadius: 12,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     fontSize: 16,
     color: colors.text,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
   },
   textArea: {
-    minHeight: 80,
+    minHeight: 88,
     textAlignVertical: 'top',
   },
   emojisContainer: {
@@ -600,153 +615,61 @@ const styles = StyleSheet.create({
   emojiButton: {
     width: 48,
     height: 48,
-    borderRadius: 8,
-    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   emojiButtonSelected: {
-    backgroundColor: 'rgba(16, 183, 72, 0.2)',
+    backgroundColor: 'rgba(16, 183, 72, 0.15)',
     borderWidth: 2,
     borderColor: colors.primary,
   },
-  emojiButtonText: {
-    fontSize: 24,
-  },
+  emojiButtonText: { fontSize: 24 },
   editActions: {
     flexDirection: 'row',
     gap: spacing.md,
     marginTop: spacing.sm,
   },
-  actionButton: {
-    flex: 1,
-  },
-  cancelButton: {
-    backgroundColor: '#F3F4F6',
-  },
-  membersList: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    overflow: 'hidden',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 1,
-      },
-    }),
-  },
-  memberItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  memberInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    gap: spacing.md,
-  },
-  memberDetails: {
-    flex: 1,
-  },
-  memberNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    marginBottom: 2,
-  },
-  memberName: {
-    ...typography.styles.body,
-    color: colors.text,
-    fontWeight: '600',
-  },
-  memberEmail: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  badge: {
-    backgroundColor: 'rgba(16, 183, 72, 0.1)',
-    paddingHorizontal: spacing.xs,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  adminBadge: {
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-  },
-  badgeText: {
-    color: colors.primary,
-    fontSize: 10,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
-  removeButton: {
-    padding: spacing.xs,
-  },
+  editActionBtn: { flex: 1 },
   actionCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    borderRadius: 16,
     padding: spacing.md,
     marginBottom: spacing.sm,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 1,
-      },
-    }),
+    gap: spacing.md,
+    ...cardShadow,
   },
-  deleteCard: {
+  actionCardDanger: {
     borderWidth: 1,
-    borderColor: '#FEE2E2',
+    borderColor: 'rgba(239, 68, 68, 0.2)',
   },
   cardPressed: {
-    opacity: 0.9,
-    backgroundColor: '#F9FAFB',
+    opacity: 0.95,
+    backgroundColor: colors.surface,
   },
-  actionContent: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.md,
-  },
-  actionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
+  actionIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  leaveIcon: {
-    backgroundColor: '#FEE2E2',
+  actionIconWrapDanger: {
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
   },
-  deleteIcon: {
-    backgroundColor: '#FEE2E2',
-  },
-  actionTextContainer: {
-    flex: 1,
-  },
+  actionTextWrap: { flex: 1, minWidth: 0 },
   actionTitle: {
     ...typography.styles.bodyBold,
     color: colors.text,
-    marginBottom: spacing.xs,
+    marginBottom: 2,
   },
-  deleteTitle: {
-    color: colors.error,
-  },
+  actionTitleDanger: { color: colors.error },
   actionDescription: {
-    ...typography.styles.body,
+    ...typography.styles.caption,
     color: colors.textSecondary,
-    fontSize: 14,
   },
 });

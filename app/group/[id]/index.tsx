@@ -1,25 +1,30 @@
 import { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Pressable, Image, StyleSheet, Platform, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, Platform } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { ExpenseCard } from '@/components/expenses/ExpenseCard';
+import { GroupDetailSkeleton } from '@/components/group/GroupDetailSkeleton';
 import { FAB } from '@/components/ui/FAB';
+import { Button } from '@/components/ui/Button';
 import { colors } from '@/constants/colors';
 import { spacing } from '@/constants/spacing';
 import { typography } from '@/constants/typography';
 import { groups, expenses, Group, Expense } from '@/lib/api';
 import { useToast } from '@/contexts/ToastContext';
 
+const groupDetailCache: Record<string, { group: Group; expensesList: Expense[] }> = {};
+
 export default function GroupDetailScreen() {
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id: string }>();
+  const id = typeof params.id === 'string' ? params.id : params.id?.[0] ?? null;
   const { showError } = useToast();
   const [activeTab, setActiveTab] = useState<'expenses' | 'balances'>('expenses');
   const [group, setGroup] = useState<Group | null>(null);
   const [expensesList, setExpensesList] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadData = useCallback(async (isRefresh = false) => {
@@ -27,7 +32,6 @@ export default function GroupDetailScreen() {
 
     try {
       if (!isRefresh) setLoading(true);
-      else setRefreshing(true);
       setError(null);
 
       const [groupData, expensesData] = await Promise.all([
@@ -37,51 +41,54 @@ export default function GroupDetailScreen() {
 
       setGroup(groupData);
       setExpensesList(expensesData);
+      groupDetailCache[id] = { group: groupData, expensesList: expensesData };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar dados';
       setError(errorMessage);
       showError(errorMessage);
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   }, [id, showError]);
 
   useEffect(() => {
+    if (!id) return;
+    const cached = groupDetailCache[id];
+    if (cached) {
+      setGroup(cached.group);
+      setExpensesList(cached.expensesList);
+      setLoading(false);
+      loadData(true);
+      return;
+    }
+    setLoading(true);
     loadData();
-  }, [loadData]);
+  }, [id, loadData]);
 
   useFocusEffect(
     useCallback(() => {
-      if (id) {
-        loadData();
+      if (!id) return;
+      if (group?.id === id) {
+        loadData(true);
       }
-    }, [id, loadData])
+    }, [id, group?.id, loadData])
   );
 
   if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Carregando grupo...</Text>
-      </View>
-    );
+    return <GroupDetailSkeleton />;
   }
 
   if (error || !group) {
     return (
       <View style={styles.errorContainer}>
-        <Ionicons name="alert-circle" size={48} color={colors.error} />
-        <Text style={styles.errorText}>{error || 'Grupo não encontrado'}</Text>
-        <Pressable
-          style={({ pressed }) => [
-            styles.errorButton,
-            pressed && styles.buttonPressed,
-          ]}
-          onPress={() => router.back()}
-        >
-          <Text style={styles.errorButtonText}>Voltar</Text>
-        </Pressable>
+        <View style={styles.errorIconWrap}>
+          <Ionicons name="alert-circle-outline" size={40} color={colors.error} />
+        </View>
+        <Text style={styles.errorTitle}>Grupo não encontrado</Text>
+        <Text style={styles.errorSubtitle}>{error || 'Verifique o link e tente novamente.'}</Text>
+        <Button variant="outline" onPress={() => router.back()}>
+          Voltar
+        </Button>
       </View>
     );
   }
@@ -139,24 +146,17 @@ export default function GroupDetailScreen() {
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => loadData(true)}
-            tintColor={colors.primary}
-            colors={[colors.primary]}
-          />
-        }
+        showsVerticalScrollIndicator={false}
       >
         <View style={styles.summaryCard}>
           <View style={styles.summaryImageContainer}>
-            <Image
-              source={{
-                uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBOKLcohtd6mg2dM4QrJyJvJQqDbh3V2ZQaTcGTUvdgRCA8Wgtsnhr6hZ_EIOK1cwcqc4xB61rDjK_nYveKfPa5xn8uioXz_SpZRWge3yGmiBYBTwTMm1mU4oXuVbHB7-4xA9Jsy8y3emjD0w2bPjl_gdxeBeBQ1JIeiIK6VY3oMlvbksnNJwEjTsrIF0-KslHXmuLEOqZmUu2Cc0qoIpYr7MiIe8eKqJ_JL_AqhuhNR7SfppCvl_8BR2mbptUgLCh06G5c7EnGs6nV',
-              }}
-              style={styles.summaryImage}
-              resizeMode="cover"
-            />
+            <View style={styles.summaryBlurBackdrop} />
+            {Platform.OS === 'ios' && (
+              <BlurView intensity={60} tint="light" style={StyleSheet.absoluteFill} />
+            )}
+            <View style={styles.summaryEmojiWrap}>
+              <Text style={styles.summaryEmoji}>{group.emoji || '👥'}</Text>
+            </View>
           </View>
           <View style={styles.summaryContent}>
             <Text style={styles.summaryLabel}>Total do Grupo</Text>
@@ -258,18 +258,18 @@ export default function GroupDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f6f8f6',
+    backgroundColor: colors.surface,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingTop: Platform.OS === 'ios' ? 50 : spacing.lg,
     paddingBottom: spacing.md,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: colors.border,
   },
   headerTitle: {
     ...typography.styles.h2,
@@ -291,40 +291,48 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    padding: spacing.lg,
     paddingBottom: 96,
   },
   summaryCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    margin: spacing.md,
+    backgroundColor: colors.background,
+    borderRadius: 16,
+    marginBottom: spacing.lg,
     overflow: 'hidden',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
       },
-      android: {
-        elevation: 2,
-      },
+      android: { elevation: 2 },
     }),
   },
   summaryImageContainer: {
     width: '100%',
     aspectRatio: 21 / 9,
-    backgroundColor: 'rgba(16, 183, 72, 0.1)',
+    overflow: 'hidden',
+    position: 'relative',
   },
-  summaryImage: {
-    width: '100%',
-    height: '100%',
+  summaryBlurBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(16, 183, 72, 0.25)',
+  },
+  summaryEmojiWrap: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  summaryEmoji: {
+    fontSize: 56,
   },
   summaryContent: {
-    padding: spacing.md,
+    padding: spacing.lg,
   },
   summaryLabel: {
-    fontSize: 14,
-    color: '#61896f',
+    ...typography.styles.caption,
+    color: colors.textSecondary,
     marginBottom: spacing.xs,
   },
   summaryAmount: {
@@ -333,18 +341,16 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   summaryInfo: {
-    fontSize: 14,
-    color: '#61896f',
+    ...typography.styles.caption,
+    color: colors.textSecondary,
   },
   tabsContainer: {
-    backgroundColor: '#f6f8f6',
-    paddingHorizontal: spacing.md,
     paddingBottom: spacing.sm,
   },
   tabs: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: '#dbe6df',
+    borderBottomColor: colors.border,
   },
   tab: {
     flex: 1,
@@ -358,17 +364,13 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.primary,
   },
   tabText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#61896f',
-    letterSpacing: 0.015,
+    ...typography.styles.captionBold,
+    color: colors.textSecondary,
   },
   tabTextActive: {
     color: colors.primary,
   },
-  expensesContainer: {
-    paddingHorizontal: spacing.md,
-  },
+  expensesContainer: {},
   expensesSection: {
     marginTop: spacing.md,
   },
@@ -400,33 +402,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.xl,
+    backgroundColor: colors.surface,
   },
-  errorText: {
-    ...typography.styles.h3,
-    color: colors.error,
-    marginTop: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  errorButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    borderRadius: 12,
-  },
-  errorButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  loadingContainer: {
-    flex: 1,
+  errorIconWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f6f8f6',
+    marginBottom: spacing.md,
   },
-  loadingText: {
+  errorTitle: {
+    ...typography.styles.h3,
+    color: colors.text,
+    marginBottom: spacing.xs,
+    textAlign: 'center',
+  },
+  errorSubtitle: {
     ...typography.styles.body,
     color: colors.textSecondary,
-    marginTop: spacing.md,
+    textAlign: 'center',
+    marginBottom: spacing.xl,
   },
 });

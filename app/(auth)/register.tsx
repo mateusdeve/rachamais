@@ -93,7 +93,11 @@ export default function RegisterScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.contentContainer}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.formContainer}>
         <View style={styles.header}>
           <View style={styles.logoContainer}>
@@ -167,7 +171,7 @@ export default function RegisterScreen() {
                 <Ionicons
                   name={showPassword ? 'eye-off' : 'eye'}
                   size={20}
-                  color="#61896f"
+                  color={colors.primary}
                 />
               </Pressable>
             }
@@ -201,7 +205,7 @@ export default function RegisterScreen() {
                 <Ionicons
                   name={showConfirmPassword ? 'eye-off' : 'eye'}
                   size={20}
-                  color="#61896f"
+                  color={colors.primary}
                 />
               </Pressable>
             }
@@ -233,17 +237,18 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f6f8f6',
+    backgroundColor: colors.surface,
   },
   contentContainer: {
     flexGrow: 1,
     paddingVertical: spacing.xl,
+    paddingBottom: spacing.xxl,
   },
   formContainer: {
     width: '100%',
     maxWidth: 480,
     alignSelf: 'center',
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
   },
   header: {
     alignItems: 'center',
@@ -268,9 +273,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   subtitle: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#61896f',
+    ...typography.styles.body,
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   form: {
@@ -291,8 +295,8 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
   },
   footerText: {
-    color: '#61896f',
-    fontSize: 14,
+    ...typography.styles.body,
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   footerLink: {

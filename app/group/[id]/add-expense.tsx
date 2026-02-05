@@ -12,9 +12,15 @@ import { members, expenses, GroupMember } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 
+function normalizeId(param: string | string[] | undefined): string | undefined {
+  if (param == null) return undefined;
+  return Array.isArray(param) ? param[0] : param;
+}
+
 export default function AddExpenseScreen() {
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id?: string | string[] }>();
+  const id = normalizeId(params.id);
   const { user } = useAuth();
   const { showError, showSuccess } = useToast();
   const [amount, setAmount] = useState('');
@@ -162,7 +168,11 @@ export default function AddExpenseScreen() {
         <View style={styles.headerButton} />
       </View>
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.amountSection}>
           <Text style={styles.amountLabel}>Valor Total</Text>
           <View style={styles.amountInputContainer}>
@@ -189,12 +199,12 @@ export default function AddExpenseScreen() {
             <Text style={styles.label}>Descrição</Text>
             <View style={styles.inputWithIcon}>
               <View style={styles.inputIcon}>
-                <Ionicons name="bag" size={20} color="#9CA3AF" />
+                <Ionicons name="bag" size={20} color={colors.textMuted} />
               </View>
               <TextInput
                 style={styles.input}
                 placeholder="O que você comprou?"
-                placeholderTextColor="#61896f"
+                placeholderTextColor={colors.textMuted}
                 value={description}
                 onChangeText={setDescription}
               />
@@ -205,7 +215,7 @@ export default function AddExpenseScreen() {
             <Text style={styles.label}>Pago por</Text>
             <View style={styles.inputWithIcon}>
               <View style={styles.inputIcon}>
-                <Ionicons name="person" size={20} color="#9CA3AF" />
+                <Ionicons name="person" size={20} color={colors.textMuted} />
               </View>
               <View style={styles.paidByInput}>
                 <Text style={styles.paidByText}>
@@ -291,10 +301,7 @@ export default function AddExpenseScreen() {
           disabled={!amount || !description || selectedMembers.length === 0 || saving}
           loading={saving}
         >
-          <View style={styles.saveButtonContent}>
-            <Ionicons name="save" size={20} color="#fff" />
-            <Text style={styles.saveButtonText}>Salvar Despesa</Text>
-          </View>
+          Salvar Despesa
         </Button>
       </View>
     </View>
@@ -304,16 +311,18 @@ export default function AddExpenseScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f6f8f6',
+    backgroundColor: colors.surface,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingTop: Platform.OS === 'ios' ? 50 : spacing.lg,
     paddingBottom: spacing.md,
-    backgroundColor: '#f6f8f6',
+    backgroundColor: colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   headerTitle: {
     ...typography.styles.h2,
@@ -335,6 +344,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    padding: spacing.lg,
     paddingBottom: 100,
   },
   amountSection: {
@@ -374,7 +384,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   formSection: {
-    paddingHorizontal: spacing.md,
     gap: spacing.md,
   },
   inputGroup: {
@@ -397,12 +406,12 @@ const styles = StyleSheet.create({
   },
   input: {
     width: '100%',
-    borderRadius: 8,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#dbe6df',
-    backgroundColor: '#fff',
+    borderColor: colors.border,
+    backgroundColor: colors.background,
     paddingLeft: 48,
-    paddingRight: spacing.md,
+    paddingRight: spacing.lg,
     paddingVertical: spacing.md,
     fontSize: 16,
     color: colors.text,
@@ -410,26 +419,26 @@ const styles = StyleSheet.create({
   },
   paidByInput: {
     width: '100%',
-    borderRadius: 8,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#dbe6df',
-    backgroundColor: '#fff',
+    borderColor: colors.border,
+    backgroundColor: colors.background,
     paddingLeft: 48,
-    paddingRight: spacing.md,
+    paddingRight: spacing.lg,
     paddingVertical: spacing.md,
     minHeight: 56,
     justifyContent: 'center',
   },
   paidByText: {
     flex: 1,
-    fontSize: 16,
+    ...typography.styles.body,
     color: colors.text,
   },
   loadingScreen: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f6f8f6',
+    backgroundColor: colors.surface,
   },
   loadingContainer: {
     alignItems: 'center',
@@ -444,45 +453,53 @@ const styles = StyleSheet.create({
   },
   splitTypeContainer: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 2,
-    gap: 2,
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: 4,
+    gap: 4,
   },
   splitTypeButton: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: spacing.sm,
-    borderRadius: 6,
+    borderRadius: 12,
     backgroundColor: 'transparent',
   },
   splitTypeButtonActive: {
     backgroundColor: colors.primary,
   },
   splitTypeText: {
-    fontSize: 14,
-    fontWeight: '500',
+    ...typography.styles.captionBold,
     color: colors.textSecondary,
   },
   splitTypeTextActive: {
-    color: '#fff',
+    color: colors.background,
   },
   membersList: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: colors.background,
+    borderRadius: 16,
     overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+      },
+      android: { elevation: 2 },
+    }),
   },
   memberItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: spacing.md,
+    padding: spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: colors.border,
   },
   memberItemPressed: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: colors.surface,
   },
   memberInfo: {
     flexDirection: 'row',
@@ -499,7 +516,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   memberAmount: {
-    fontSize: 12,
+    ...typography.styles.small,
     color: colors.textSecondary,
   },
   footer: {
@@ -507,30 +524,18 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    padding: spacing.md,
-    backgroundColor: '#f6f8f6',
+    padding: spacing.lg,
+    backgroundColor: colors.background,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: colors.border,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
       },
-      android: {
-        elevation: 8,
-      },
+      android: { elevation: 8 },
     }),
-  },
-  saveButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '700',
   },
 });

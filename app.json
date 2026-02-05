@@ -53,14 +53,13 @@
           }
         }
       ],
-        [
-          "expo-notifications",
-          {
-            "icon": "./assets/images/icons/android-icon-96x96.png",
-            "color": "#22C55E",
-            "sounds": ["default"]
-          }
-        ]
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icons/android-icon-96x96.png",
+          "color": "#22C55E"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

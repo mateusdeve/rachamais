@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, Platform, ActivityIndicator, Alert, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, Platform, ActivityIndicator, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { DebtCard } from '@/components/balances/DebtCard';
+import { BalancesSkeleton } from '@/components/balances/BalancesSkeleton';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { colors } from '@/constants/colors';
@@ -25,7 +26,6 @@ export default function BalancesScreen() {
   const [payingDebt, setPayingDebt] = useState<string | null>(null);
   const [confirmingReceipt, setConfirmingReceipt] = useState<string | null>(null);
   const [liquidating, setLiquidating] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -33,10 +33,9 @@ export default function BalancesScreen() {
     }
   }, [id]);
 
-  const loadBalances = async (isRefresh = false) => {
+  const loadBalances = async () => {
     if (!id) return;
-    if (!isRefresh) setLoading(true);
-    else setRefreshing(true);
+    setLoading(true);
     try {
       setError(null);
       const data = await balances.get(id);
@@ -47,7 +46,6 @@ export default function BalancesScreen() {
       showError(errorMessage);
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   };
 
@@ -156,28 +154,20 @@ export default function BalancesScreen() {
   };
 
   if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Carregando saldos...</Text>
-      </View>
-    );
+    return <BalancesSkeleton />;
   }
 
   if (error || !balancesData) {
     return (
       <View style={styles.errorContainer}>
-        <Ionicons name="alert-circle" size={48} color={colors.error} />
-        <Text style={styles.errorText}>{error || 'Erro ao carregar saldos'}</Text>
-        <Pressable
-          style={({ pressed }) => [
-            styles.errorButton,
-            pressed && styles.buttonPressed,
-          ]}
-          onPress={() => router.back()}
-        >
-          <Text style={styles.errorButtonText}>Voltar</Text>
-        </Pressable>
+        <View style={styles.errorIconWrap}>
+          <Ionicons name="alert-circle-outline" size={40} color={colors.error} />
+        </View>
+        <Text style={styles.errorTitle}>Erro ao carregar saldos</Text>
+        <Text style={styles.errorSubtitle}>{error || 'Tente novamente mais tarde.'}</Text>
+        <Button variant="outline" onPress={() => router.back()}>
+          Voltar
+        </Button>
       </View>
     );
   }
@@ -202,7 +192,7 @@ export default function BalancesScreen() {
             pressed && styles.buttonPressed,
           ]}
         >
-          <Ionicons name="arrow-back" size={24} color={colors.primary} />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
         <Text style={styles.headerTitle}>Quem deve o quê</Text>
         <View style={styles.headerButton} />
@@ -211,14 +201,7 @@ export default function BalancesScreen() {
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => loadBalances(true)}
-            tintColor={colors.primary}
-            colors={[colors.primary]}
-          />
-        }
+        showsVerticalScrollIndicator={false}
       >
         <View style={styles.balanceCard}>
           <Text style={styles.balanceLabel}>Seu saldo total no grupo</Text>
@@ -290,17 +273,12 @@ export default function BalancesScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <Button onPress={handleLiquidateAll} disabled={liquidating || userDebts.filter(d => d.isUserOwes).length === 0}>
-          <View style={styles.liquidateButtonContent}>
-            {liquidating ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Ionicons name="card" size={20} color="#fff" />
-            )}
-            <Text style={styles.liquidateButtonText}>
-              {liquidating ? 'Liquidando...' : 'Liquidar Tudo'}
-            </Text>
-          </View>
+        <Button
+          onPress={handleLiquidateAll}
+          disabled={liquidating || userDebts.filter(d => d.isUserOwes).length === 0}
+          loading={liquidating}
+        >
+          {liquidating ? 'Liquidando...' : 'Liquidar Tudo'}
         </Button>
       </View>
     </View>
@@ -310,18 +288,18 @@ export default function BalancesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f6f8f6',
+    backgroundColor: colors.surface,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingTop: Platform.OS === 'ios' ? 50 : spacing.lg,
     paddingBottom: spacing.md,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: colors.border,
   },
   headerTitle: {
     ...typography.styles.h3,
@@ -343,28 +321,27 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    padding: spacing.lg,
     paddingBottom: 100,
   },
   balanceCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: colors.background,
+    borderRadius: 16,
     padding: spacing.lg,
-    margin: spacing.md,
+    marginBottom: spacing.lg,
     gap: spacing.sm,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
       },
-      android: {
-        elevation: 2,
-      },
+      android: { elevation: 2 },
     }),
   },
   balanceLabel: {
-    fontSize: 14,
+    ...typography.styles.caption,
     color: colors.textSecondary,
   },
   balanceRow: {
@@ -373,8 +350,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   balanceAmount: {
-    fontSize: 32,
-    fontWeight: '700',
+    ...typography.styles.h1,
     lineHeight: 40,
   },
   balancePositive: {
@@ -390,7 +366,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
   sectionTitle: {
@@ -398,12 +373,10 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   sectionSubtitle: {
-    fontSize: 12,
-    fontWeight: '500',
+    ...typography.styles.small,
     color: colors.textMuted,
   },
   debtsList: {
-    paddingHorizontal: spacing.md,
     gap: spacing.sm,
   },
   emptyState: {
@@ -459,20 +432,20 @@ const styles = StyleSheet.create({
   infoLine: {
     flex: 1,
     height: 2,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: colors.border,
   },
   infoCenter: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#E5E7EB',
+    borderColor: colors.border,
   },
   infoText: {
-    fontSize: 12,
+    ...typography.styles.small,
     color: colors.textSecondary,
     textAlign: 'center',
     maxWidth: 200,
@@ -482,64 +455,46 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    padding: spacing.md,
-    backgroundColor: '#f6f8f6',
+    padding: spacing.lg,
+    backgroundColor: colors.background,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: colors.border,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
       },
-      android: {
-        elevation: 8,
-      },
+      android: { elevation: 8 },
     }),
-  },
-  liquidateButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  liquidateButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '700',
   },
   errorContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.xl,
+    backgroundColor: colors.surface,
   },
-  errorText: {
-    ...typography.styles.h3,
-    color: colors.error,
-    marginTop: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  errorButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    borderRadius: 12,
-  },
-  errorButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  loadingContainer: {
-    flex: 1,
+  errorIconWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f6f8f6',
+    marginBottom: spacing.md,
   },
-  loadingText: {
+  errorTitle: {
+    ...typography.styles.h3,
+    color: colors.text,
+    marginBottom: spacing.xs,
+    textAlign: 'center',
+  },
+  errorSubtitle: {
     ...typography.styles.body,
     color: colors.textSecondary,
-    marginTop: spacing.md,
+    textAlign: 'center',
+    marginBottom: spacing.xl,
   },
 });
