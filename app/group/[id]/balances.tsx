@@ -49,9 +49,14 @@ export default function BalancesScreen() {
 
   const handlePayDebt = async (debt: SimplifiedDebt) => {
     if (!id || !user) return;
+    
+    // Evitar múltiplos cliques
+    const debtKey = `${debt.from.id}-${debt.to.id}`;
+    if (payingDebt === debtKey) return;
 
     try {
-      setPayingDebt(`${debt.from.id}-${debt.to.id}`);
+      setPayingDebt(debtKey);
+      console.log(`[FRONTEND] Criando settlement: ${debt.from.id} -> ${debt.to.id}, amount: ${debt.amount}`);
       await settlements.create(id, {
         fromUserId: debt.from.id,
         toUserId: debt.to.id,
@@ -60,10 +65,11 @@ export default function BalancesScreen() {
       });
       showSuccess(`Pagamento de R$ ${debt.amount.toFixed(2).replace('.', ',')} registrado!`);
       // Aguardar um pouco para garantir que o backend processou tudo
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Aumentado para 1 segundo
       await loadBalances();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao registrar pagamento';
+      console.error('[FRONTEND] Erro ao criar settlement:', err);
       showError(errorMessage);
     } finally {
       setPayingDebt(null);

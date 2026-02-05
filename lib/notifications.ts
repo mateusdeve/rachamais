@@ -10,7 +10,8 @@ const getBaseURL = () => {
   if (typeof window !== 'undefined') {
     return window.location.origin;
   }
-  return 'http://localhost:8081';
+  // Fallback para desenvolvimento local (porta do servidor backend)
+  return 'http://localhost:3001';
 };
 
 async function apiClient<T>(endpoint: string, options: RequestInit = {}): Promise<T> {

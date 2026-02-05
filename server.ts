@@ -10,6 +10,12 @@ const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET!;
 
+// Verificar variáveis de ambiente críticas na inicialização
+if (!JWT_SECRET) {
+  console.error('ERRO CRÍTICO: JWT_SECRET não está definido nas variáveis de ambiente!');
+  process.exit(1);
+}
+
 app.use(cors());
 app.use(express.json());
 
@@ -135,31 +141,45 @@ app.get('/invite/:code', (req, res) => {
 
 // ===== BALANCE HELPER =====
 async function calculateUserBalance(groupId: string, userId: string): Promise<number> {
+  // Total que o usuário pagou em despesas
   const paidExpenses = await prisma.expense.aggregate({
     where: { groupId, paidById: userId },
     _sum: { amount: true },
   });
   const totalPaid = Number(paidExpenses._sum.amount || 0);
   
+  // Total que o usuário deve (splits das despesas)
   const userSplits = await prisma.expenseSplit.aggregate({
     where: { expense: { groupId }, userId },
     _sum: { amount: true },
   });
   const totalOwed = Number(userSplits._sum.amount || 0);
   
+  // Settlements recebidos (alguém pagou para o usuário)
   const received = await prisma.settlement.aggregate({
     where: { groupId, toUserId: userId },
     _sum: { amount: true },
   });
   const totalReceived = Number(received._sum.amount || 0);
   
+  // Settlements pagos pelo usuário (usuário pagou para alguém)
   const paid = await prisma.settlement.aggregate({
     where: { groupId, fromUserId: userId },
     _sum: { amount: true },
   });
   const totalSettlementPaid = Number(paid._sum.amount || 0);
   
-  return totalPaid + totalReceived - totalOwed - totalSettlementPaid;
+  // Saldo = (o que pagou em despesas - o que deve em splits) + (settlements recebidos - settlements pagos)
+  // Se positivo: usuário tem crédito (alguém deve para ele)
+  // Se negativo: usuário tem débito (ele deve para alguém)
+  const balance = totalPaid - totalOwed + totalReceived - totalSettlementPaid;
+  
+  // Debug temporário (remover depois)
+  if (Math.abs(balance) > 1000) {
+    console.log(`[BALANCE DEBUG] userId: ${userId}, totalPaid: ${totalPaid}, totalOwed: ${totalOwed}, totalReceived: ${totalReceived}, totalSettlementPaid: ${totalSettlementPaid}, balance: ${balance}`);
+  }
+  
+  return balance;
 }
 
 // ===== AUTH ROUTES =====
@@ -193,25 +213,52 @@ app.post('/api/auth/register', async (req, res) => {
 
 app.post('/api/auth/login', async (req, res) => {
   try {
+    console.log('[LOGIN] Recebida requisição de login');
+    console.log('[LOGIN] Body:', JSON.stringify(req.body));
+    
     const validation = loginSchema.safeParse(req.body);
     if (!validation.success) {
+      console.log('[LOGIN] Validação falhou:', validation.error.errors);
       return res.status(400).json({ error: validation.error.errors[0].message });
     }
     
     const { email, password } = validation.data;
+    console.log('[LOGIN] Buscando usuário com email:', email);
+    
     const user = await prisma.user.findUnique({ where: { email } });
     
-    if (!user || !(await comparePassword(password, user.password))) {
+    if (!user) {
+      console.log('[LOGIN] Usuário não encontrado');
       return res.status(401).json({ error: 'Email ou senha inválidos' });
     }
     
+    console.log('[LOGIN] Usuário encontrado, verificando senha...');
+    const passwordMatch = await comparePassword(password, user.password);
+    
+    if (!passwordMatch) {
+      console.log('[LOGIN] Senha incorreta');
+      return res.status(401).json({ error: 'Email ou senha inválidos' });
+    }
+    
+    console.log('[LOGIN] Senha correta, gerando token...');
+    if (!JWT_SECRET) {
+      console.error('[LOGIN] ERRO: JWT_SECRET não está definido!');
+      return res.status(500).json({ error: 'Erro de configuração do servidor' });
+    }
+    
     const token = generateToken({ userId: user.id, email: user.email });
+    console.log('[LOGIN] Login bem-sucedido para:', email);
+    
     res.json({
       user: { id: user.id, name: user.name, email: user.email, avatarUrl: user.avatarUrl },
       token,
     });
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('[LOGIN] Erro completo:', error);
+    if (error instanceof Error) {
+      console.error('[LOGIN] Mensagem de erro:', error.message);
+      console.error('[LOGIN] Stack:', error.stack);
+    }
     res.status(500).json({ error: 'Erro interno do servidor' });
   }
 });
@@ -442,32 +489,40 @@ app.post('/api/groups/join', async (req, res) => {
 function simplifyDebts(
   balances: { userId: string; userName: string; avatarUrl: string | null; amount: number }[]
 ): { from: { id: string; name: string; avatarUrl: string | null }; to: { id: string; name: string; avatarUrl: string | null }; amount: number }[] {
+  // Criar cópias para não mutar os objetos originais
   const creditors = balances
     .filter((b) => b.amount > 0)
-    .map((b) => ({ ...b, amount: b.amount }))
+    .map((b) => ({ userId: b.userId, userName: b.userName, avatarUrl: b.avatarUrl, amount: b.amount }))
     .sort((a, b) => b.amount - a.amount);
   const debtors = balances
     .filter((b) => b.amount < 0)
-    .map((b) => ({ ...b, amount: Math.abs(b.amount) }))
+    .map((b) => ({ userId: b.userId, userName: b.userName, avatarUrl: b.avatarUrl, amount: Math.abs(b.amount) }))
     .sort((a, b) => b.amount - a.amount);
+  
   const debts: { from: { id: string; name: string; avatarUrl: string | null }; to: { id: string; name: string; avatarUrl: string | null }; amount: number }[] = [];
   let i = 0;
   let j = 0;
+  
   while (i < creditors.length && j < debtors.length) {
     const cred = creditors[i];
     const deb = debtors[j];
     const amount = Math.min(cred.amount, deb.amount);
-    if (amount <= 0) break;
+    
+    if (amount <= 0 || amount < 0.01) break; // Evitar valores muito pequenos
+    
     debts.push({
       from: { id: deb.userId, name: deb.userName, avatarUrl: deb.avatarUrl },
       to: { id: cred.userId, name: cred.userName, avatarUrl: cred.avatarUrl },
-      amount,
+      amount: Math.round(amount * 100) / 100, // Arredondar para 2 casas decimais
     });
+    
     cred.amount -= amount;
     deb.amount -= amount;
-    if (cred.amount <= 0) i++;
-    if (deb.amount <= 0) j++;
+    
+    if (cred.amount <= 0.01) i++;
+    if (deb.amount <= 0.01) j++;
   }
+  
   return debts;
 }
 
@@ -671,6 +726,11 @@ app.post('/api/groups/:id/settlements', async (req, res) => {
     // Calcular saldo atual do pagador
     const currentBalance = await calculateUserBalance(req.params.id, fromUserId);
     
+    // Debug: Log do saldo antes do pagamento
+    console.log(`[SETTLEMENT DEBUG] Criando settlement de ${fromUserId} para ${toUserId}`);
+    console.log(`[SETTLEMENT DEBUG] Saldo ANTES: ${currentBalance}`);
+    console.log(`[SETTLEMENT DEBUG] Valor do pagamento: ${amount}`);
+    
     // Verificar se o usuário deve dinheiro (saldo negativo)
     if (currentBalance >= 0) {
       return res.status(400).json({ error: 'Você não deve dinheiro neste grupo' });
@@ -682,12 +742,18 @@ app.post('/api/groups/:id/settlements', async (req, res) => {
       return res.status(400).json({ error: `Você deve apenas R$ ${amountDue.toFixed(2).replace('.', ',')}. O valor do pagamento não pode exceder esse valor.` });
     }
     
+    // Garantir que amount é um número válido
+    const settlementAmount = Number(amount);
+    if (isNaN(settlementAmount) || settlementAmount <= 0) {
+      return res.status(400).json({ error: 'Valor do pagamento inválido' });
+    }
+    
     const settlement = await prisma.settlement.create({
       data: {
         groupId: req.params.id,
         fromUserId,
         toUserId,
-        amount,
+        amount: settlementAmount,
         paymentMethod,
         note,
       },
@@ -696,6 +762,11 @@ app.post('/api/groups/:id/settlements', async (req, res) => {
         toUser: { select: { id: true, name: true, avatarUrl: true } },
       },
     });
+    
+    // Debug: Verificar saldo após criar settlement
+    const balanceAfter = await calculateUserBalance(req.params.id, fromUserId);
+    console.log(`[SETTLEMENT DEBUG] Saldo DEPOIS: ${balanceAfter}`);
+    console.log(`[SETTLEMENT DEBUG] Settlement criado com ID: ${settlement.id}, amount: ${settlement.amount}`);
     
     await prisma.activity.create({
       data: {

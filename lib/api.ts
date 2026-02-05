@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Base URL da API
 const getBaseURL = () => {
-  // Em produção, usar a variável de ambiente
+  // Usar a variável de ambiente se definida
   if (process.env.EXPO_PUBLIC_API_URL) {
     return process.env.EXPO_PUBLIC_API_URL;
   }
@@ -12,11 +12,12 @@ const getBaseURL = () => {
     return window.location.origin;
   }
   
-  // Fallback para desenvolvimento local
-  return 'http://localhost:8081';
+  // Fallback para desenvolvimento local (porta do servidor backend)
+  return 'http://localhost:3001';
 };
 
 const API_BASE_URL = getBaseURL();
+console.log(`[API] URL base da API configurada: ${API_BASE_URL}`);
 
 // Tipos para as respostas da API
 export interface ApiError {
@@ -156,10 +157,14 @@ async function apiClient<T>(
 ): Promise<T> {
   const token = await AsyncStorage.getItem('auth_token');
   
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...options.headers,
   };
+  
+  // Adicionar headers customizados se existirem
+  if (options.headers) {
+    Object.assign(headers, options.headers as Record<string, string>);
+  }
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
@@ -169,13 +174,22 @@ async function apiClient<T>(
     ? endpoint 
     : `${API_BASE_URL}${endpoint}`;
 
+  console.log(`[API] Fazendo requisição para: ${url}`);
+  console.log(`[API] Método: ${options.method || 'GET'}`);
+  if (options.body) {
+    console.log(`[API] Body: ${options.body}`);
+  }
+
   try {
     const response = await fetch(url, {
       ...options,
       headers,
     });
 
+    console.log(`[API] Resposta recebida - Status: ${response.status}`);
+    
     const data = await response.json();
+    console.log(`[API] Dados recebidos:`, JSON.stringify(data).substring(0, 200));
 
     // Tratar erros de autenticação
     if (response.status === 401) {
@@ -186,11 +200,13 @@ async function apiClient<T>(
 
     if (!response.ok) {
       const errorMessage = (data as ApiError).error || 'Erro ao processar requisição';
+      console.error(`[API] Erro na resposta:`, errorMessage);
       throw new Error(errorMessage);
     }
 
     return data as T;
   } catch (error) {
+    console.error(`[API] Erro na requisição:`, error);
     if (error instanceof Error) {
       throw error;
     }

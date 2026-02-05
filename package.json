@@ -10,8 +10,9 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "generate-icons": "node scripts/generate-icons.js",
-    "server": "npx ts-node server.ts",
-  "server:prod": "node --loader ts-node/esm server.ts"
+    "server": "npx tsx server.ts",
+    "server:prod": "npx tsx server.ts",
+    "dev": "npm run server"
   },
   "dependencies": {
     "@expo/server": "^0.7.5",
@@ -26,9 +27,9 @@
     "cors": "^2.8.6",
     "expo": "~54.0.33",
     "expo-constants": "~18.0.13",
+    "expo-device": "~8.0.10",
     "expo-font": "~14.0.11",
     "expo-haptics": "~15.0.8",
-    "expo-device": "~8.0.10",
     "expo-image": "~3.0.11",
     "expo-linking": "~8.0.11",
     "expo-notifications": "~0.32.16",
@@ -63,6 +64,8 @@
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
     "prisma": "^6.0.0",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
     "typescript": "~5.9.2"
   },
   "private": true
