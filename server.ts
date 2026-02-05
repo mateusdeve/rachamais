@@ -675,10 +675,151 @@ app.post('/api/groups/:id/settlements', async (req, res) => {
       },
     });
     
+    // Enviar notificações
+    const amountFormatted = amount.toFixed(2).replace('.', ',');
+    await sendNotificationToUser(
+      toUserId,
+      'Você recebeu um pagamento!',
+      `${settlement.fromUser.name} pagou R$ ${amountFormatted} para você`,
+      { groupId: req.params.id, type: 'SETTLEMENT_RECEIVED' }
+    );
+    
+    await sendNotificationToGroup(
+      req.params.id,
+      payload.userId,
+      'Novo pagamento no grupo',
+      `${settlement.fromUser.name} pagou R$ ${amountFormatted} para ${settlement.toUser.name}`,
+      { groupId: req.params.id, type: 'SETTLEMENT_MADE' }
+    );
+    
     res.status(201).json(settlement);
   } catch (error) {
     console.error('Create settlement error:', error);
     res.status(500).json({ error: 'Erro ao criar acerto' });
+  }
+});
+
+// ===== NOTIFICATIONS =====
+const EXPO_ACCESS_TOKEN = process.env.EXPO_ACCESS_TOKEN;
+
+async function sendNotificationToUser(
+  userId: string,
+  title: string,
+  body: string,
+  data?: Record<string, any>
+): Promise<void> {
+  if (!EXPO_ACCESS_TOKEN) {
+    console.warn('EXPO_ACCESS_TOKEN não configurado, pulando notificação');
+    return;
+  }
+
+  try {
+    const tokens = await prisma.deviceToken.findMany({
+      where: { userId },
+      select: { token: true },
+    });
+
+    if (tokens.length === 0) return;
+
+    const messages = tokens.map((t) => ({
+      to: t.token,
+      sound: 'default',
+      title,
+      body,
+      data: data || {},
+    }));
+
+    const response = await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Accept-Encoding': 'gzip, deflate',
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${EXPO_ACCESS_TOKEN}`,
+      },
+      body: JSON.stringify(messages),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error('Erro ao enviar notificação:', error);
+    }
+  } catch (error) {
+    console.error('Erro ao enviar notificação:', error);
+  }
+}
+
+async function sendNotificationToGroup(
+  groupId: string,
+  excludeUserId: string,
+  title: string,
+  body: string,
+  data?: Record<string, any>
+): Promise<void> {
+  try {
+    const members = await prisma.groupMember.findMany({
+      where: {
+        groupId,
+        userId: { not: excludeUserId },
+      },
+      select: { userId: true },
+    });
+
+    await Promise.all(
+      members.map((member) => sendNotificationToUser(member.userId, title, body, data))
+    );
+  } catch (error) {
+    console.error('Erro ao enviar notificação para grupo:', error);
+  }
+}
+
+app.post('/api/notifications/register', async (req, res) => {
+  const payload = getUserFromRequest(req);
+  if (!payload) return res.status(401).json({ error: 'Não autorizado' });
+
+  try {
+    const { token, platform } = req.body;
+    if (!token || !platform) {
+      return res.status(400).json({ error: 'Token e platform são obrigatórios' });
+    }
+
+    await prisma.deviceToken.upsert({
+      where: { token },
+      update: { userId: payload.userId, platform, updatedAt: new Date() },
+      create: {
+        userId: payload.userId,
+        token,
+        platform,
+      },
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Register token error:', error);
+    res.status(500).json({ error: 'Erro ao registrar token' });
+  }
+});
+
+app.post('/api/notifications/unregister', async (req, res) => {
+  const payload = getUserFromRequest(req);
+  if (!payload) return res.status(401).json({ error: 'Não autorizado' });
+
+  try {
+    const { token } = req.body;
+    if (token) {
+      await prisma.deviceToken.deleteMany({
+        where: { userId: payload.userId, token },
+      });
+    } else {
+      await prisma.deviceToken.deleteMany({
+        where: { userId: payload.userId },
+      });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Unregister token error:', error);
+    res.status(500).json({ error: 'Erro ao remover token' });
   }
 });
 

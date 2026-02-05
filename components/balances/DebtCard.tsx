@@ -9,9 +9,11 @@ interface DebtCardProps {
   debt: SimplifiedDebt & { isUserOwed?: boolean; isUserOwes?: boolean };
   isUserOwed?: boolean;
   isUserOwes?: boolean;
+  onPay?: (debt: SimplifiedDebt) => void;
+  loading?: boolean;
 }
 
-export function DebtCard({ debt, isUserOwed, isUserOwes }: DebtCardProps) {
+export function DebtCard({ debt, isUserOwed, isUserOwes, onPay, loading }: DebtCardProps) {
   const isThirdParty = !isUserOwed && !isUserOwes;
 
   return (
@@ -92,9 +94,12 @@ export function DebtCard({ debt, isUserOwed, isUserOwes }: DebtCardProps) {
                 styles.buttonPrimary,
                 styles.buttonFull,
                 pressed && styles.buttonPressed,
+                loading && styles.buttonDisabled,
               ]}
+              onPress={() => onPay?.(debt)}
+              disabled={loading}
             >
-              <Text style={styles.buttonText}>Pagar Agora</Text>
+              <Text style={styles.buttonText}>{loading ? 'Processando...' : 'Pagar Agora'}</Text>
             </Pressable>
           )}
         </View>
@@ -222,5 +227,8 @@ const styles = StyleSheet.create({
   buttonPressed: {
     opacity: 0.8,
     transform: [{ scale: 0.98 }],
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
 });

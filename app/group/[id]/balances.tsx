@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, Platform, ActivityIndicator, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { DebtCard } from '@/components/balances/DebtCard';
@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/Badge';
 import { colors } from '@/constants/colors';
 import { spacing } from '@/constants/spacing';
 import { typography } from '@/constants/typography';
-import { balances, BalancesResponse } from '@/lib/api';
+import { balances, BalancesResponse, settlements, SimplifiedDebt } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 
@@ -17,10 +17,12 @@ export default function BalancesScreen() {
   const params = useLocalSearchParams<{ id: string }>();
   const id = typeof params.id === 'string' ? params.id : params.id?.[0] ?? null;
   const { user } = useAuth();
-  const { showError } = useToast();
+  const { showError, showSuccess } = useToast();
   const [balancesData, setBalancesData] = useState<BalancesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [payingDebt, setPayingDebt] = useState<string | null>(null);
+  const [liquidating, setLiquidating] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -43,6 +45,74 @@ export default function BalancesScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePayDebt = async (debt: SimplifiedDebt) => {
+    if (!id || !user) return;
+
+    try {
+      setPayingDebt(`${debt.from.id}-${debt.to.id}`);
+      await settlements.create(id, {
+        fromUserId: debt.from.id,
+        toUserId: debt.to.id,
+        amount: debt.amount,
+        paymentMethod: 'PIX',
+      });
+      showSuccess(`Pagamento de R$ ${debt.amount.toFixed(2).replace('.', ',')} registrado!`);
+      await loadBalances();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao registrar pagamento';
+      showError(errorMessage);
+    } finally {
+      setPayingDebt(null);
+    }
+  };
+
+  const handleLiquidateAll = async () => {
+    if (!id || !user || !balancesData) return;
+
+    const userDebtsToPay = balancesData.debts.filter(debt => debt.from.id === user.id);
+    
+    if (userDebtsToPay.length === 0) {
+      showError('Você não tem dívidas para liquidar');
+      return;
+    }
+
+    const totalAmount = userDebtsToPay.reduce((sum, debt) => sum + debt.amount, 0);
+
+    Alert.alert(
+      'Liquidar Tudo',
+      `Você está prestes a registrar pagamentos no valor total de R$ ${totalAmount.toFixed(2).replace('.', ',')}. Deseja continuar?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Confirmar',
+          style: 'default',
+          onPress: async () => {
+            try {
+              setLiquidating(true);
+              await Promise.all(
+                userDebtsToPay.map(debt =>
+                  settlements.create(id, {
+                    fromUserId: debt.from.id,
+                    toUserId: debt.to.id,
+                    amount: debt.amount,
+                    paymentMethod: 'PIX',
+                  })
+                )
+              );
+              showSuccess(`Todos os pagamentos foram registrados! Total: R$ ${totalAmount.toFixed(2).replace('.', ',')}`);
+              await loadBalances();
+            } catch (err) {
+              const errorMessage = err instanceof Error ? err.message : 'Erro ao liquidar dívidas';
+              showError(errorMessage);
+            } finally {
+              setLiquidating(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   if (loading) {
@@ -144,6 +214,8 @@ export default function BalancesScreen() {
                 debt={debt}
                 isUserOwed={debt.isUserOwed}
                 isUserOwes={debt.isUserOwes}
+                onPay={handlePayDebt}
+                loading={payingDebt === `${debt.from.id}-${debt.to.id}`}
               />
             ))
           )}
@@ -166,10 +238,16 @@ export default function BalancesScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <Button onPress={() => {}}>
+        <Button onPress={handleLiquidateAll} disabled={liquidating || userDebts.filter(d => d.isUserOwes).length === 0}>
           <View style={styles.liquidateButtonContent}>
-            <Ionicons name="card" size={20} color="#fff" />
-            <Text style={styles.liquidateButtonText}>Liquidar Tudo</Text>
+            {liquidating ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Ionicons name="card" size={20} color="#fff" />
+            )}
+            <Text style={styles.liquidateButtonText}>
+              {liquidating ? 'Liquidando...' : 'Liquidar Tudo'}
+            </Text>
           </View>
         </Button>
       </View>

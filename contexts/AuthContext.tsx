@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { auth, User } from '@/lib/api';
+import { registerForPushNotifications, unregisterPushNotifications } from '@/lib/notifications';
 
 interface AuthContextType {
   user: User | null;
@@ -94,6 +95,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(response.token);
       setUser(response.user);
       
+      // Registrar notificações push
+      registerForPushNotifications().catch((err) => {
+        console.error('Erro ao registrar notificações:', err);
+      });
+      
       router.replace('/(tabs)');
     } catch (error) {
       throw error;
@@ -110,6 +116,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(response.token);
       setUser(response.user);
       
+      // Registrar notificações push
+      registerForPushNotifications().catch((err) => {
+        console.error('Erro ao registrar notificações:', err);
+      });
+      
       router.replace('/(tabs)');
     } catch (error) {
       throw error;
@@ -117,6 +128,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
+    // Remover token de notificações
+    await unregisterPushNotifications().catch((err) => {
+      console.error('Erro ao remover token de notificações:', err);
+    });
+    
     await clearAuthData();
     router.replace('/(auth)/login');
   };

@@ -18,7 +18,8 @@
       "infoPlist": {
         "NSUserTrackingUsageDescription": "Este app não rastreia usuários.",
         "NSCameraUsageDescription": "Permitimos acesso à câmera para atualizar sua foto de perfil.",
-        "NSPhotoLibraryUsageDescription": "Permitimos acesso à galeria para atualizar sua foto de perfil."
+        "NSPhotoLibraryUsageDescription": "Permitimos acesso à galeria para atualizar sua foto de perfil.",
+        "NSUserNotificationsUsageDescription": "Permitimos notificações para avisar sobre pagamentos e atividades nos grupos."
       }
     },
     "android": {
@@ -49,6 +50,14 @@
           "dark": {
             "backgroundColor": "#102216"
           }
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#22C55E",
+          "sounds": ["default"]
         }
       ]
     ],

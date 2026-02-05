@@ -28,6 +28,7 @@ model User {
   settlementsFrom  Settlement[]    @relation("SettlementFrom")
   settlementsTo    Settlement[]    @relation("SettlementTo")
   activities       Activity[]
+  deviceTokens     DeviceToken[]
 
   @@map("users")
 }
@@ -135,4 +136,18 @@ model Activity {
   user  User  @relation(fields: [userId], references: [id])
 
   @@map("activities")
+}
+
+model DeviceToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  platform  String   // ios, android
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("device_tokens")
 }
