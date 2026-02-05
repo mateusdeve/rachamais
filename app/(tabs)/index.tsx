@@ -164,7 +164,7 @@ export default function HomeScreen() {
             </Text>
             <View style={styles.balanceBadge}>
               <Text style={styles.balanceBadgeText}>
-                {totalBalance >= 0 ? 'a receber' : 'a pagar'}
+                {totalBalance === 0 ? 'tudo quitado' : totalBalance > 0 ? 'a receber' : 'a pagar'}
               </Text>
             </View>
           </View>

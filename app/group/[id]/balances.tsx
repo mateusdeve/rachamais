@@ -57,7 +57,6 @@ export default function BalancesScreen() {
 
     try {
       setPayingDebt(debtKey);
-      console.log(`[FRONTEND] Criando settlement: ${debt.from.id} -> ${debt.to.id}, amount: ${debt.amount}`);
       await settlements.create(id, {
         fromUserId: debt.from.id,
         toUserId: debt.to.id,
@@ -70,7 +69,6 @@ export default function BalancesScreen() {
       await loadBalances();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao registrar pagamento';
-      console.error('[FRONTEND] Erro ao criar settlement:', err);
       showError(errorMessage);
     } finally {
       setPayingDebt(null);
@@ -86,7 +84,6 @@ export default function BalancesScreen() {
 
     try {
       setConfirmingReceipt(debtKey);
-      console.log(`[FRONTEND] Confirmando recebimento: ${debt.from.id} -> ${debt.to.id}, amount: ${debt.amount}`);
       await settlements.create(id, {
         fromUserId: debt.from.id,
         toUserId: debt.to.id,
@@ -99,7 +96,6 @@ export default function BalancesScreen() {
       await loadBalances();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao confirmar recebimento';
-      console.error('[FRONTEND] Erro ao confirmar recebimento:', err);
       showError(errorMessage);
     } finally {
       setConfirmingReceipt(null);
@@ -222,14 +218,20 @@ export default function BalancesScreen() {
             <Text
               style={[
                 styles.balanceAmount,
-                userBalance >= 0 ? styles.balancePositive : styles.balanceNegative,
+                userBalance > 0 ? styles.balancePositive : userBalance < 0 ? styles.balanceNegative : styles.balanceSettled,
               ]}
             >
-              {userBalance >= 0 ? '+' : ''}R$ {Math.abs(userBalance).toFixed(2).replace('.', ',')}
+              {userBalance > 0 ? '+' : ''}R$ {Math.abs(userBalance).toFixed(2).replace('.', ',')}
             </Text>
-            <Badge variant={userBalance >= 0 ? 'primary' : 'error'}>
-              {userBalance >= 0 ? 'A receber' : 'A pagar'}
-            </Badge>
+            {userBalance === 0 ? (
+              <Badge variant="primary">
+                Tudo quitado
+              </Badge>
+            ) : (
+              <Badge variant={userBalance > 0 ? 'primary' : 'error'}>
+                {userBalance > 0 ? 'A receber' : 'A pagar'}
+              </Badge>
+            )}
           </View>
         </View>
 
@@ -377,6 +379,9 @@ const styles = StyleSheet.create({
   },
   balanceNegative: {
     color: colors.error,
+  },
+  balanceSettled: {
+    color: colors.textSecondary,
   },
   sectionHeader: {
     flexDirection: 'row',

@@ -169,18 +169,14 @@ async function calculateUserBalance(groupId: string, userId: string): Promise<nu
   });
   const totalSettlementPaid = Number(paid._sum.amount || 0);
   
-  // Saldo = (o que pagou em despesas + settlements pagos) - (o que deve em splits) + (settlements recebidos)
-  // Lógica: Settlements pagos REDUZEM a dívida (são adicionados ao que foi pago)
+  // Saldo = (o que pagou em despesas - o que deve em splits) - (settlements recebidos) + (settlements pagos)
+  // Lógica:
+  // - totalPaid - totalOwed: Saldo base baseado em despesas (crédito se positivo, débito se negativo)
+  // - totalReceived: Reduz o crédito (alguém te pagou, então não deve mais) ou reduz o débito (você recebeu pagamento)
+  // - totalSettlementPaid: Aumenta o crédito (você pagou, então alguém te deve menos) ou aumenta o débito (você pagou)
   // Se positivo: usuário tem crédito (alguém deve para ele)
   // Se negativo: usuário tem débito (ele deve para alguém)
-  const balance = (totalPaid + totalSettlementPaid) - totalOwed + totalReceived;
-  
-  // Debug temporário (remover depois)
-  if (Math.abs(balance) > 1000) {
-    console.log(`[BALANCE DEBUG] userId: ${userId}, totalPaid: ${totalPaid}, totalOwed: ${totalOwed}, totalReceived: ${totalReceived}, totalSettlementPaid: ${totalSettlementPaid}, balance: ${balance}`);
-  }
-  
-  return balance;
+  return totalPaid - totalOwed - totalReceived + totalSettlementPaid;
 }
 
 // ===== AUTH ROUTES =====
@@ -214,52 +210,31 @@ app.post('/api/auth/register', async (req, res) => {
 
 app.post('/api/auth/login', async (req, res) => {
   try {
-    console.log('[LOGIN] Recebida requisição de login');
-    console.log('[LOGIN] Body:', JSON.stringify(req.body));
-    
     const validation = loginSchema.safeParse(req.body);
     if (!validation.success) {
-      console.log('[LOGIN] Validação falhou:', validation.error.errors);
       return res.status(400).json({ error: validation.error.errors[0].message });
     }
     
     const { email, password } = validation.data;
-    console.log('[LOGIN] Buscando usuário com email:', email);
-    
     const user = await prisma.user.findUnique({ where: { email } });
     
-    if (!user) {
-      console.log('[LOGIN] Usuário não encontrado');
+    if (!user || !(await comparePassword(password, user.password))) {
       return res.status(401).json({ error: 'Email ou senha inválidos' });
     }
     
-    console.log('[LOGIN] Usuário encontrado, verificando senha...');
-    const passwordMatch = await comparePassword(password, user.password);
-    
-    if (!passwordMatch) {
-      console.log('[LOGIN] Senha incorreta');
-      return res.status(401).json({ error: 'Email ou senha inválidos' });
-    }
-    
-    console.log('[LOGIN] Senha correta, gerando token...');
     if (!JWT_SECRET) {
-      console.error('[LOGIN] ERRO: JWT_SECRET não está definido!');
+      console.error('ERRO: JWT_SECRET não está definido!');
       return res.status(500).json({ error: 'Erro de configuração do servidor' });
     }
     
     const token = generateToken({ userId: user.id, email: user.email });
-    console.log('[LOGIN] Login bem-sucedido para:', email);
     
     res.json({
       user: { id: user.id, name: user.name, email: user.email, avatarUrl: user.avatarUrl },
       token,
     });
   } catch (error) {
-    console.error('[LOGIN] Erro completo:', error);
-    if (error instanceof Error) {
-      console.error('[LOGIN] Mensagem de erro:', error.message);
-      console.error('[LOGIN] Stack:', error.stack);
-    }
+    console.error('Login error:', error);
     res.status(500).json({ error: 'Erro interno do servidor' });
   }
 });
@@ -790,12 +765,6 @@ app.post('/api/groups/:id/settlements', async (req, res) => {
     // Calcular saldo atual do pagador
     const currentBalance = await calculateUserBalance(req.params.id, fromUserId);
     
-    // Debug: Log do saldo antes do pagamento
-    console.log(`[SETTLEMENT DEBUG] Criando settlement de ${fromUserId} para ${toUserId}`);
-    console.log(`[SETTLEMENT DEBUG] Criado por: ${isPayer ? 'Pagador' : 'Recebedor'}`);
-    console.log(`[SETTLEMENT DEBUG] Saldo ANTES: ${currentBalance}`);
-    console.log(`[SETTLEMENT DEBUG] Valor do pagamento: ${amount}`);
-    
     // Verificar se o pagador deve dinheiro (saldo negativo)
     if (currentBalance >= 0) {
       return res.status(400).json({ error: `${isPayer ? 'Você não deve dinheiro' : 'Este usuário não deve dinheiro'} neste grupo` });
@@ -827,11 +796,6 @@ app.post('/api/groups/:id/settlements', async (req, res) => {
         toUser: { select: { id: true, name: true, avatarUrl: true } },
       },
     });
-    
-    // Debug: Verificar saldo após criar settlement
-    const balanceAfter = await calculateUserBalance(req.params.id, fromUserId);
-    console.log(`[SETTLEMENT DEBUG] Saldo DEPOIS: ${balanceAfter}`);
-    console.log(`[SETTLEMENT DEBUG] Settlement criado com ID: ${settlement.id}, amount: ${settlement.amount}`);
     
     await prisma.activity.create({
       data: {
