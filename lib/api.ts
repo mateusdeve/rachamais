@@ -188,6 +188,18 @@ async function apiClient<T>(
 
     console.log(`[API] Resposta recebida - Status: ${response.status}`);
     
+    // Verificar se a resposta é JSON
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await response.text();
+      console.error(`[API] Resposta não é JSON. Content-Type: ${contentType}, Body: ${text.substring(0, 200)}`);
+      
+      if (response.status === 404) {
+        throw new Error('Endpoint não encontrado');
+      }
+      throw new Error(`Erro do servidor: ${response.status}`);
+    }
+    
     const data = await response.json();
     console.log(`[API] Dados recebidos:`, JSON.stringify(data).substring(0, 200));
 

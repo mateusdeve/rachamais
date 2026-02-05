@@ -22,6 +22,7 @@ export default function BalancesScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [payingDebt, setPayingDebt] = useState<string | null>(null);
+  const [confirmingReceipt, setConfirmingReceipt] = useState<string | null>(null);
   const [liquidating, setLiquidating] = useState(false);
 
   useEffect(() => {
@@ -73,6 +74,35 @@ export default function BalancesScreen() {
       showError(errorMessage);
     } finally {
       setPayingDebt(null);
+    }
+  };
+
+  const handleConfirmReceipt = async (debt: SimplifiedDebt) => {
+    if (!id || !user) return;
+    
+    // Evitar múltiplos cliques
+    const debtKey = `${debt.from.id}-${debt.to.id}`;
+    if (confirmingReceipt === debtKey) return;
+
+    try {
+      setConfirmingReceipt(debtKey);
+      console.log(`[FRONTEND] Confirmando recebimento: ${debt.from.id} -> ${debt.to.id}, amount: ${debt.amount}`);
+      await settlements.create(id, {
+        fromUserId: debt.from.id,
+        toUserId: debt.to.id,
+        amount: debt.amount,
+        paymentMethod: 'PIX',
+      });
+      showSuccess(`Recebimento de R$ ${debt.amount.toFixed(2).replace('.', ',')} confirmado!`);
+      // Aguardar um pouco para garantir que o backend processou tudo
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      await loadBalances();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao confirmar recebimento';
+      console.error('[FRONTEND] Erro ao confirmar recebimento:', err);
+      showError(errorMessage);
+    } finally {
+      setConfirmingReceipt(null);
     }
   };
 
@@ -225,7 +255,9 @@ export default function BalancesScreen() {
                 isUserOwed={debt.isUserOwed}
                 isUserOwes={debt.isUserOwes}
                 onPay={handlePayDebt}
+                onConfirmReceipt={handleConfirmReceipt}
                 loading={payingDebt === `${debt.from.id}-${debt.to.id}`}
+                confirmingReceipt={confirmingReceipt === `${debt.from.id}-${debt.to.id}`}
               />
             ))
           )}

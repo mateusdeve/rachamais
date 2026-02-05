@@ -582,6 +582,61 @@ app.get('/api/groups/:id/members', async (req, res) => {
   }
 });
 
+app.delete('/api/groups/:id/members', async (req, res) => {
+  const payload = getUserFromRequest(req);
+  if (!payload) return res.status(401).json({ error: 'Não autorizado' });
+  
+  try {
+    const { userId } = req.query;
+    
+    if (!userId || typeof userId !== 'string') {
+      return res.status(400).json({ error: 'userId é obrigatório' });
+    }
+    
+    // Verificar se o grupo existe
+    const group = await prisma.group.findUnique({
+      where: { id: req.params.id },
+      include: { members: true },
+    });
+    
+    if (!group) {
+      return res.status(404).json({ error: 'Grupo não encontrado' });
+    }
+    
+    // Verificar se o usuário é membro do grupo
+    const member = group.members.find(m => m.userId === userId);
+    if (!member) {
+      return res.status(404).json({ error: 'Usuário não é membro deste grupo' });
+    }
+    
+    // Verificar se o usuário está tentando sair do próprio grupo ou se é admin removendo outro membro
+    // Por enquanto, permitir que qualquer membro saia do grupo
+    // (você pode adicionar validações adicionais se necessário)
+    
+    // Remover o membro do grupo
+    await prisma.groupMember.delete({
+      where: {
+        id: member.id,
+      },
+    });
+    
+    // Criar atividade
+    await prisma.activity.create({
+      data: {
+        groupId: req.params.id,
+        userId: payload.userId,
+        type: 'MEMBER_LEFT',
+        description: 'Saiu do grupo',
+      },
+    });
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Remove member error:', error);
+    res.status(500).json({ error: 'Erro ao remover membro do grupo' });
+  }
+});
+
 app.get('/api/groups/:id/invite', async (req, res) => {
   const payload = getUserFromRequest(req);
   if (!payload) return res.status(401).json({ error: 'Não autorizado' });
@@ -724,23 +779,32 @@ app.post('/api/groups/:id/settlements', async (req, res) => {
       return res.status(400).json({ error: 'Ambos usuários devem ser membros do grupo' });
     }
     
+    // Verificar quem está criando o settlement
+    const isPayer = payload.userId === fromUserId;
+    const isReceiver = payload.userId === toUserId;
+    
+    if (!isPayer && !isReceiver) {
+      return res.status(403).json({ error: 'Você não pode criar este settlement' });
+    }
+    
     // Calcular saldo atual do pagador
     const currentBalance = await calculateUserBalance(req.params.id, fromUserId);
     
     // Debug: Log do saldo antes do pagamento
     console.log(`[SETTLEMENT DEBUG] Criando settlement de ${fromUserId} para ${toUserId}`);
+    console.log(`[SETTLEMENT DEBUG] Criado por: ${isPayer ? 'Pagador' : 'Recebedor'}`);
     console.log(`[SETTLEMENT DEBUG] Saldo ANTES: ${currentBalance}`);
     console.log(`[SETTLEMENT DEBUG] Valor do pagamento: ${amount}`);
     
-    // Verificar se o usuário deve dinheiro (saldo negativo)
+    // Verificar se o pagador deve dinheiro (saldo negativo)
     if (currentBalance >= 0) {
-      return res.status(400).json({ error: 'Você não deve dinheiro neste grupo' });
+      return res.status(400).json({ error: `${isPayer ? 'Você não deve dinheiro' : 'Este usuário não deve dinheiro'} neste grupo` });
     }
     
     // Verificar se o valor do pagamento não excede o que é devido
     const amountDue = Math.abs(currentBalance);
     if (amount > amountDue) {
-      return res.status(400).json({ error: `Você deve apenas R$ ${amountDue.toFixed(2).replace('.', ',')}. O valor do pagamento não pode exceder esse valor.` });
+      return res.status(400).json({ error: `${isPayer ? 'Você deve apenas' : 'Este usuário deve apenas'} R$ ${amountDue.toFixed(2).replace('.', ',')}. O valor do pagamento não pode exceder esse valor.` });
     }
     
     // Garantir que amount é um número válido

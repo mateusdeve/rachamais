@@ -10,10 +10,12 @@ interface DebtCardProps {
   isUserOwed?: boolean;
   isUserOwes?: boolean;
   onPay?: (debt: SimplifiedDebt) => void;
+  onConfirmReceipt?: (debt: SimplifiedDebt) => void;
   loading?: boolean;
+  confirmingReceipt?: boolean;
 }
 
-export function DebtCard({ debt, isUserOwed, isUserOwes, onPay, loading }: DebtCardProps) {
+export function DebtCard({ debt, isUserOwed, isUserOwes, onPay, onConfirmReceipt, loading, confirmingReceipt }: DebtCardProps) {
   const isThirdParty = !isUserOwed && !isUserOwes;
 
   return (
@@ -74,10 +76,15 @@ export function DebtCard({ debt, isUserOwed, isUserOwes, onPay, loading }: DebtC
                   styles.buttonPrimary,
                   styles.buttonFull,
                   pressed && styles.buttonPressed,
+                  confirmingReceipt && styles.buttonDisabled,
                 ]}
+                onPress={() => onConfirmReceipt?.(debt)}
+                disabled={confirmingReceipt}
               >
                 <Ionicons name="checkmark-circle" size={18} color="#fff" />
-                <Text style={styles.buttonText}>Confirmar Recebimento</Text>
+                <Text style={styles.buttonText}>
+                  {confirmingReceipt ? 'Confirmando...' : 'Confirmar Recebimento'}
+                </Text>
               </Pressable>
               <Pressable
                 style={({ pressed }) => [
