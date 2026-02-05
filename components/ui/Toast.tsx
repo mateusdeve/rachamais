@@ -17,7 +17,7 @@ interface ToastProps {
 
 export function Toast({ message, type, visible, onHide, duration = 3000 }: ToastProps) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(-100)).current;
+  const slideAnim = useRef(new Animated.Value(100)).current;
 
   useEffect(() => {
     if (visible) {
@@ -55,7 +55,7 @@ export function Toast({ message, type, visible, onHide, duration = 3000 }: Toast
         useNativeDriver: true,
       }),
       Animated.timing(slideAnim, {
-        toValue: -100,
+        toValue: 100,
         duration: 200,
         useNativeDriver: true,
       }),
@@ -79,29 +79,29 @@ export function Toast({ message, type, visible, onHide, duration = 3000 }: Toast
     }
   };
 
-  const getColor = () => {
+  const getBorderColor = () => {
     switch (type) {
       case 'success':
-        return colors.primary;
+        return '#22C55E';
       case 'error':
-        return colors.error;
+        return '#EF4444';
       case 'info':
         return '#3B82F6';
       default:
-        return colors.text;
+        return '#6B7280';
     }
   };
 
-  const getBackgroundColor = () => {
+  const getIconColor = () => {
     switch (type) {
       case 'success':
-        return '#D1FAE5';
+        return '#22C55E';
       case 'error':
-        return '#FEE2E2';
+        return '#EF4444';
       case 'info':
-        return '#DBEAFE';
+        return '#3B82F6';
       default:
-        return '#F3F4F6';
+        return '#6B7280';
     }
   };
 
@@ -116,9 +116,9 @@ export function Toast({ message, type, visible, onHide, duration = 3000 }: Toast
       ]}
       pointerEvents="none"
     >
-      <View style={[styles.toast, { backgroundColor: getBackgroundColor() }]}>
-        <Ionicons name={getIcon()} size={24} color={getColor()} />
-        <Text style={[styles.message, { color: getColor() }]}>{message}</Text>
+      <View style={[styles.toast, { borderColor: getBorderColor() }]}>
+        <Ionicons name={getIcon()} size={20} color={getIconColor()} />
+        <Text style={styles.message}>{message}</Text>
       </View>
     </Animated.View>
   );
@@ -127,7 +127,7 @@ export function Toast({ message, type, visible, onHide, duration = 3000 }: Toast
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 60 : 40,
+    bottom: 100,
     left: 0,
     right: 0,
     alignItems: 'center',
@@ -137,27 +137,31 @@ const styles = StyleSheet.create({
   toast: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     borderRadius: 12,
-    minWidth: 200,
+    minWidth: 280,
     maxWidth: '90%',
     gap: spacing.sm,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
       },
       android: {
-        elevation: 6,
+        elevation: 4,
       },
     }),
   },
   message: {
     ...typography.styles.body,
     flex: 1,
-    fontWeight: '600',
+    fontWeight: '500',
+    color: '#1F2937',
+    fontSize: 14,
   },
 });

@@ -59,6 +59,8 @@ export default function BalancesScreen() {
         paymentMethod: 'PIX',
       });
       showSuccess(`Pagamento de R$ ${debt.amount.toFixed(2).replace('.', ',')} registrado!`);
+      // Aguardar um pouco para garantir que o backend processou tudo
+      await new Promise(resolve => setTimeout(resolve, 500));
       await loadBalances();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao registrar pagamento';
@@ -102,6 +104,8 @@ export default function BalancesScreen() {
                 )
               );
               showSuccess(`Todos os pagamentos foram registrados! Total: R$ ${totalAmount.toFixed(2).replace('.', ',')}`);
+              // Aguardar um pouco para garantir que o backend processou tudo
+              await new Promise(resolve => setTimeout(resolve, 500));
               await loadBalances();
             } catch (err) {
               const errorMessage = err instanceof Error ? err.message : 'Erro ao liquidar dívidas';

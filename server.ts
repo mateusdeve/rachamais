@@ -651,6 +651,37 @@ app.post('/api/groups/:id/settlements', async (req, res) => {
     
     const { fromUserId, toUserId, amount, paymentMethod, note } = validation.data;
     
+    // Validações
+    if (fromUserId === toUserId) {
+      return res.status(400).json({ error: 'Não é possível pagar para si mesmo' });
+    }
+    
+    // Verificar se ambos são membros do grupo
+    const members = await prisma.groupMember.findMany({
+      where: {
+        groupId: req.params.id,
+        userId: { in: [fromUserId, toUserId] },
+      },
+    });
+    
+    if (members.length !== 2) {
+      return res.status(400).json({ error: 'Ambos usuários devem ser membros do grupo' });
+    }
+    
+    // Calcular saldo atual do pagador
+    const currentBalance = await calculateUserBalance(req.params.id, fromUserId);
+    
+    // Verificar se o usuário deve dinheiro (saldo negativo)
+    if (currentBalance >= 0) {
+      return res.status(400).json({ error: 'Você não deve dinheiro neste grupo' });
+    }
+    
+    // Verificar se o valor do pagamento não excede o que é devido
+    const amountDue = Math.abs(currentBalance);
+    if (amount > amountDue) {
+      return res.status(400).json({ error: `Você deve apenas R$ ${amountDue.toFixed(2).replace('.', ',')}. O valor do pagamento não pode exceder esse valor.` });
+    }
+    
     const settlement = await prisma.settlement.create({
       data: {
         groupId: req.params.id,
