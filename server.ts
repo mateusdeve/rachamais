@@ -169,10 +169,11 @@ async function calculateUserBalance(groupId: string, userId: string): Promise<nu
   });
   const totalSettlementPaid = Number(paid._sum.amount || 0);
   
-  // Saldo = (o que pagou em despesas - o que deve em splits) + (settlements recebidos - settlements pagos)
+  // Saldo = (o que pagou em despesas + settlements pagos) - (o que deve em splits) + (settlements recebidos)
+  // Lógica: Settlements pagos REDUZEM a dívida (são adicionados ao que foi pago)
   // Se positivo: usuário tem crédito (alguém deve para ele)
   // Se negativo: usuário tem débito (ele deve para alguém)
-  const balance = totalPaid - totalOwed + totalReceived - totalSettlementPaid;
+  const balance = (totalPaid + totalSettlementPaid) - totalOwed + totalReceived;
   
   // Debug temporário (remover depois)
   if (Math.abs(balance) > 1000) {
