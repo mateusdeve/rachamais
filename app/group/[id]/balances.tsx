@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, Platform, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, Platform, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { DebtCard } from '@/components/balances/DebtCard';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -24,6 +25,7 @@ export default function BalancesScreen() {
   const [payingDebt, setPayingDebt] = useState<string | null>(null);
   const [confirmingReceipt, setConfirmingReceipt] = useState<string | null>(null);
   const [liquidating, setLiquidating] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -31,11 +33,11 @@ export default function BalancesScreen() {
     }
   }, [id]);
 
-  const loadBalances = async () => {
+  const loadBalances = async (isRefresh = false) => {
     if (!id) return;
-
+    if (!isRefresh) setLoading(true);
+    else setRefreshing(true);
     try {
-      setLoading(true);
       setError(null);
       const data = await balances.get(id);
       setBalancesData(data);
@@ -45,16 +47,17 @@ export default function BalancesScreen() {
       showError(errorMessage);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
   const handlePayDebt = async (debt: SimplifiedDebt) => {
     if (!id || !user) return;
     
-    // Evitar múltiplos cliques
     const debtKey = `${debt.from.id}-${debt.to.id}`;
     if (payingDebt === debtKey) return;
 
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
       setPayingDebt(debtKey);
       await settlements.create(id, {
@@ -78,10 +81,10 @@ export default function BalancesScreen() {
   const handleConfirmReceipt = async (debt: SimplifiedDebt) => {
     if (!id || !user) return;
     
-    // Evitar múltiplos cliques
     const debtKey = `${debt.from.id}-${debt.to.id}`;
     if (confirmingReceipt === debtKey) return;
 
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
       setConfirmingReceipt(debtKey);
       await settlements.create(id, {
@@ -112,6 +115,7 @@ export default function BalancesScreen() {
       return;
     }
 
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const totalAmount = userDebtsToPay.reduce((sum, debt) => sum + debt.amount, 0);
 
     Alert.alert(
@@ -204,7 +208,18 @@ export default function BalancesScreen() {
         <View style={styles.headerButton} />
       </View>
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => loadBalances(true)}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
+      >
         <View style={styles.balanceCard}>
           <Text style={styles.balanceLabel}>Seu saldo total no grupo</Text>
           <View style={styles.balanceRow}>

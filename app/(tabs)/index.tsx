@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Pressable, RefreshControl, StyleSheet, Platform, ActivityIndicator, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { GroupCard } from '@/components/groups/GroupCard';
 import { FAB } from '@/components/ui/FAB';
 import { Avatar } from '@/components/ui/Avatar';
@@ -204,7 +205,12 @@ export default function HomeScreen() {
         )}
       </ScrollView>
 
-      <FAB onPress={() => router.push('/group/create')} />
+      <FAB
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          router.push('/group/create');
+        }}
+      />
     </View>
   );
 }

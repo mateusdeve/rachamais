@@ -126,7 +126,7 @@ export default function LoginScreen() {
           />
 
           <Pressable
-            onPress={() => {}}
+            onPress={() => router.push('/(auth)/forgot-password')}
             style={({ pressed }) => [
               styles.forgotPassword,
               pressed && styles.forgotPasswordPressed,

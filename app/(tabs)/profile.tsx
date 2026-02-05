@@ -2,11 +2,14 @@ import { useState } from 'react';
 import { View, Text, ScrollView, Pressable, Switch, StyleSheet, Platform, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import { Avatar } from '@/components/ui/Avatar';
 import { colors } from '@/constants/colors';
 import { spacing } from '@/constants/spacing';
 import { typography } from '@/constants/typography';
 import { useAuth } from '@/contexts/AuthContext';
+
+const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -105,6 +108,38 @@ export default function ProfileScreen() {
 
         </View>
 
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Suporte</Text>
+          <Pressable
+            onPress={() => router.push('/about')}
+            style={({ pressed }) => [styles.settingsCard, pressed && styles.cardPressed]}
+          >
+            <View style={styles.settingsItem}>
+              <View style={styles.settingsItemLeft}>
+                <View style={styles.iconContainer}>
+                  <Ionicons name="information-circle-outline" size={20} color={colors.text} />
+                </View>
+                <Text style={styles.settingsItemText}>Sobre o app</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+            </View>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push('/privacy')}
+            style={({ pressed }) => [styles.settingsCard, pressed && styles.cardPressed]}
+          >
+            <View style={styles.settingsItem}>
+              <View style={styles.settingsItemLeft}>
+                <View style={styles.iconContainer}>
+                  <Ionicons name="document-text-outline" size={20} color={colors.text} />
+                </View>
+                <Text style={styles.settingsItemText}>Privacidade</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+            </View>
+          </Pressable>
+        </View>
+
         <Pressable
           onPress={handleLogout}
           style={({ pressed }) => [
@@ -117,6 +152,8 @@ export default function ProfileScreen() {
           </View>
           <Text style={styles.logoutText}>Sair da conta</Text>
         </Pressable>
+
+        <Text style={styles.footerVersion}>RachaMais v{APP_VERSION}</Text>
       </ScrollView>
     </View>
   );
@@ -304,5 +341,12 @@ const styles = StyleSheet.create({
     ...typography.styles.bodyBold,
     color: colors.error,
     flex: 1,
+  },
+  footerVersion: {
+    ...typography.styles.small,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: spacing.xl,
+    marginBottom: spacing.lg,
   },
 });

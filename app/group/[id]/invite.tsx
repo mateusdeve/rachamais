@@ -1,13 +1,13 @@
-import { useState, useEffect } from 'react';
-import { View, Text, Pressable, StyleSheet, Platform, Alert, ActivityIndicator, Share } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { Button } from '@/components/ui/Button';
 import { colors } from '@/constants/colors';
 import { spacing } from '@/constants/spacing';
 import { typography } from '@/constants/typography';
-import { invite } from '@/lib/api';
 import { useToast } from '@/contexts/ToastContext';
+import { invite } from '@/lib/api';
+import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 
 export default function InviteScreen() {
   const router = useRouter();
@@ -32,7 +32,7 @@ export default function InviteScreen() {
       const data = await invite.get(id);
       setGroupCode(data.inviteCode);
       // Garantir link e nome mesmo se a API retornar só inviteCode (ex.: backend antigo)
-      const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'https://rachamais-production.up.railway.app';
+      const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'app.rachamais.com.br';
       const link = data.inviteLink ?? (data.inviteCode ? `${baseUrl}/invite/${data.inviteCode}` : '');
       const name = data.groupName ?? 'o grupo';
       setInviteLink(link);

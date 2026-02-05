@@ -21,6 +21,8 @@ export default function RootLayout() {
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="group" />
             <Stack.Screen name="invite" />
+            <Stack.Screen name="about" />
+            <Stack.Screen name="privacy" />
           </Stack>
           <StatusBar style="dark" />
         </ToastProvider>

@@ -6,6 +6,7 @@ import { typography } from '@/constants/typography';
 import { useToast } from '@/contexts/ToastContext';
 import { groups, User, users } from '@/lib/api';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -70,6 +71,7 @@ export default function CreateGroupScreen() {
       return;
     }
 
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setIsCreating(true);
     try {
       const newGroup = await groups.create({

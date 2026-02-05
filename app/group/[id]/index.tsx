@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Pressable, Image, StyleSheet, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Pressable, Image, StyleSheet, Platform, ActivityIndicator, RefreshControl } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,20 +19,22 @@ export default function GroupDetailScreen() {
   const [group, setGroup] = useState<Group | null>(null);
   const [expensesList, setExpensesList] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (isRefresh = false) => {
     if (!id) return;
 
     try {
-      setLoading(true);
+      if (!isRefresh) setLoading(true);
+      else setRefreshing(true);
       setError(null);
-      
+
       const [groupData, expensesData] = await Promise.all([
         groups.get(id),
         expenses.list(id),
       ]);
-      
+
       setGroup(groupData);
       setExpensesList(expensesData);
     } catch (err) {
@@ -41,6 +43,7 @@ export default function GroupDetailScreen() {
       showError(errorMessage);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [id, showError]);
 
@@ -133,7 +136,18 @@ export default function GroupDetailScreen() {
         </Pressable>
       </View>
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => loadData(true)}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
+      >
         <View style={styles.summaryCard}>
           <View style={styles.summaryImageContainer}>
             <Image
