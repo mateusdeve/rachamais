@@ -766,8 +766,9 @@ function simplifyDebts(
   }));
 
   // Criar cópias para não mutar os objetos originais
+  // Incluir valores >= 0.01 (maior ou igual a 1 centavo) para creditors
   const creditors = roundedBalances
-    .filter((b) => b.amount > 0.01) // Threshold de 1 centavo
+    .filter((b) => b.amount >= 0.01) // Incluir valores de exatamente 0.01
     .map((b) => ({
       userId: b.userId,
       userName: b.userName,
@@ -775,8 +776,9 @@ function simplifyDebts(
       amount: Math.round(b.amount * 100) / 100,
     }))
     .sort((a, b) => b.amount - a.amount);
+  // Incluir valores <= -0.01 (menor ou igual a -1 centavo) para debtors
   const debtors = roundedBalances
-    .filter((b) => b.amount < -0.01) // Threshold de 1 centavo
+    .filter((b) => b.amount <= -0.01) // Incluir valores de exatamente -0.01
     .map((b) => ({
       userId: b.userId,
       userName: b.userName,
@@ -799,7 +801,7 @@ function simplifyDebts(
     const rawAmount = Math.min(cred.amount, deb.amount);
     const amount = Math.round(rawAmount * 100) / 100; // Arredondar antes de usar
 
-    // Threshold de 1 centavo para evitar valores muito pequenos
+    // Permitir valores de pelo menos 0.01 (1 centavo)
     if (amount <= 0 || amount < 0.01) break;
 
     debts.push({
@@ -812,9 +814,9 @@ function simplifyDebts(
     cred.amount = Math.round((cred.amount - amount) * 100) / 100;
     deb.amount = Math.round((deb.amount - amount) * 100) / 100;
 
-    // Usar threshold de 1 centavo para determinar se ainda há saldo
-    if (cred.amount <= 0.01) i++;
-    if (deb.amount <= 0.01) j++;
+    // Avançar quando o saldo restante for menor que 0.01 (menos de 1 centavo)
+    if (cred.amount < 0.01) i++;
+    if (deb.amount < 0.01) j++;
   }
 
   return debts;
@@ -1017,6 +1019,34 @@ app.post("/api/groups/:id/expenses", async (req, res) => {
     const { description, amount, paidById, category, splitType, splits, date } =
       validation.data;
 
+    // Calcular splits com distribuição inteligente de centavos
+    let calculatedSplits: Array<{ userId: string; amount: number; percentage?: number }>;
+    
+    if (splitType === "EQUAL") {
+      // Distribuir igualmente, garantindo que a soma seja exatamente igual ao valor total
+      const splitCount = splits.length;
+      const baseAmount = Math.floor((amount * 100) / splitCount) / 100; // Valor base em centavos
+      const remainder = Math.round((amount * 100) % splitCount); // Centavos restantes
+      
+      calculatedSplits = splits.map((s, index) => {
+        // Os primeiros 'remainder' splits recebem 1 centavo extra
+        const extraCent = index < remainder ? 0.01 : 0;
+        const finalAmount = Math.round((baseAmount + extraCent) * 100) / 100;
+        return {
+          userId: s.userId,
+          amount: finalAmount,
+          percentage: s.percentage,
+        };
+      });
+    } else {
+      // Para outros tipos, usar os valores fornecidos ou calcular proporcionalmente
+      calculatedSplits = splits.map((s) => ({
+        userId: s.userId,
+        amount: s.amount || amount / splits.length,
+        percentage: s.percentage,
+      }));
+    }
+
     const expense = await prisma.expense.create({
       data: {
         groupId: req.params.id,
@@ -1027,9 +1057,9 @@ app.post("/api/groups/:id/expenses", async (req, res) => {
         splitType,
         date: date ? new Date(date) : new Date(),
         splits: {
-          create: splits.map((s) => ({
+          create: calculatedSplits.map((s) => ({
             userId: s.userId,
-            amount: s.amount || amount / splits.length,
+            amount: s.amount,
             percentage: s.percentage,
           })),
         },
