@@ -4,7 +4,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const getBaseURL = () => {
   // Usar a variável de ambiente se definida
   if (process.env.EXPO_PUBLIC_API_URL) {
-    return process.env.EXPO_PUBLIC_API_URL;
+    let url = process.env.EXPO_PUBLIC_API_URL;
+    // Garantir que a URL tenha protocolo
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = `https://${url}`;
+    }
+    return url;
   }
   
   // Para desenvolvimento web: usar window.location.origin

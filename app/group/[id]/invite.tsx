@@ -37,7 +37,11 @@ export default function InviteScreen() {
     try {
       setLoading(true);
       const data = await invite.get(id);
-      const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'app.rachamais.com.br';
+      let baseUrl = process.env.EXPO_PUBLIC_API_URL || 'https://rachamais-production.up.railway.app';
+      // Garantir que a URL tenha protocolo
+      if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+        baseUrl = `https://${baseUrl}`;
+      }
       const link =
         data.inviteLink ?? (data.inviteCode ? `${baseUrl}/invite/${data.inviteCode}` : '');
       setInviteLink(link);
