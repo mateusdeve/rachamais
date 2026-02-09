@@ -22,10 +22,24 @@ const getBaseURL = () => {
 async function apiClient<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const token = await AsyncStorage.getItem('auth_token');
   
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...options.headers,
   };
+
+  // Adicionar headers existentes se houver
+  if (options.headers) {
+    if (options.headers instanceof Headers) {
+      options.headers.forEach((value, key) => {
+        headers[key] = value;
+      });
+    } else if (Array.isArray(options.headers)) {
+      options.headers.forEach(([key, value]) => {
+        headers[key] = value;
+      });
+    } else {
+      Object.assign(headers, options.headers);
+    }
+  }
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
@@ -52,11 +66,15 @@ async function apiClient<T>(endpoint: string, options: RequestInit = {}): Promis
 
 // Configurar comportamento das notificações quando o app está em foreground
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
+  handleNotification: async () => {
+    return {
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    } as Notifications.NotificationBehavior;
+  },
 });
 
 export async function registerForPushNotifications(): Promise<string | null> {
