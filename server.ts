@@ -767,7 +767,7 @@ function simplifyDebts(
 
   // Criar cópias para não mutar os objetos originais
   const creditors = roundedBalances
-    .filter((b) => b.amount > 0.005) // Threshold de meio centavo
+    .filter((b) => b.amount > 0.01) // Threshold de 1 centavo
     .map((b) => ({
       userId: b.userId,
       userName: b.userName,
@@ -776,7 +776,7 @@ function simplifyDebts(
     }))
     .sort((a, b) => b.amount - a.amount);
   const debtors = roundedBalances
-    .filter((b) => b.amount < -0.005) // Threshold de meio centavo
+    .filter((b) => b.amount < -0.01) // Threshold de 1 centavo
     .map((b) => ({
       userId: b.userId,
       userName: b.userName,
@@ -799,8 +799,8 @@ function simplifyDebts(
     const rawAmount = Math.min(cred.amount, deb.amount);
     const amount = Math.round(rawAmount * 100) / 100; // Arredondar antes de usar
 
-    // Threshold de meio centavo para evitar valores muito pequenos
-    if (amount <= 0 || amount < 0.005) break;
+    // Threshold de 1 centavo para evitar valores muito pequenos
+    if (amount <= 0 || amount < 0.01) break;
 
     debts.push({
       from: { id: deb.userId, name: deb.userName, avatarUrl: deb.avatarUrl },
@@ -812,9 +812,9 @@ function simplifyDebts(
     cred.amount = Math.round((cred.amount - amount) * 100) / 100;
     deb.amount = Math.round((deb.amount - amount) * 100) / 100;
 
-    // Usar threshold de meio centavo para determinar se ainda há saldo
-    if (cred.amount <= 0.005) i++;
-    if (deb.amount <= 0.005) j++;
+    // Usar threshold de 1 centavo para determinar se ainda há saldo
+    if (cred.amount <= 0.01) i++;
+    if (deb.amount <= 0.01) j++;
   }
 
   return debts;
@@ -1158,9 +1158,9 @@ app.post("/api/groups/:id/settlements", async (req, res) => {
       });
     }
 
-    // Garantir que amount é um número válido
-    if (isNaN(roundedAmount) || roundedAmount <= 0) {
-      return res.status(400).json({ error: "Valor do pagamento inválido" });
+    // Garantir que amount é um número válido e pelo menos 1 centavo
+    if (isNaN(roundedAmount) || roundedAmount < 0.01) {
+      return res.status(400).json({ error: "Valor do pagamento deve ser pelo menos R$ 0,01" });
     }
 
     // Usar o valor arredondado para o settlement
@@ -1227,17 +1227,22 @@ async function sendNotificationToUser(
   data?: Record<string, any>,
 ): Promise<void> {
   if (!EXPO_ACCESS_TOKEN) {
-    console.warn("EXPO_ACCESS_TOKEN não configurado, pulando notificação");
+    console.warn("⚠️ EXPO_ACCESS_TOKEN não configurado, pulando notificação");
     return;
   }
 
   try {
     const tokens = await prisma.deviceToken.findMany({
       where: { userId },
-      select: { token: true },
+      select: { token: true, id: true },
     });
 
-    if (tokens.length === 0) return;
+    if (tokens.length === 0) {
+      console.log(`📱 Nenhum token encontrado para o usuário ${userId}`);
+      return;
+    }
+
+    console.log(`📤 Enviando notificação para ${tokens.length} dispositivo(s) do usuário ${userId}`);
 
     const messages = tokens.map((t) => ({
       to: t.token,
@@ -1259,11 +1264,63 @@ async function sendNotificationToUser(
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      console.error("Erro ao enviar notificação:", error);
+      const errorText = await response.text();
+      console.error(`❌ Erro HTTP ao enviar notificação: ${response.status} - ${errorText}`);
+      return;
+    }
+
+    // Parsear resposta JSON da API do Expo
+    const responseData = await response.json();
+    
+    if (responseData.data) {
+      let successCount = 0;
+      let errorCount = 0;
+      const invalidTokens: string[] = [];
+
+      // Verificar status de cada notificação enviada
+      for (let i = 0; i < responseData.data.length; i++) {
+        const result = responseData.data[i];
+        const token = tokens[i];
+
+        if (result.status === "ok") {
+          successCount++;
+        } else {
+          errorCount++;
+          const error = result.details?.error;
+          
+          // Verificar erros específicos que indicam token inválido/expirado
+          if (
+            error === "DeviceNotRegistered" ||
+            error === "InvalidCredentials" ||
+            error === "MessageTooBig" ||
+            (error && error.includes("Invalid"))
+          ) {
+            console.log(`🗑️ Token inválido/expirado detectado: ${token.token.substring(0, 20)}... (erro: ${error})`);
+            invalidTokens.push(token.id);
+          } else {
+            console.warn(`⚠️ Erro ao enviar notificação para token ${token.token.substring(0, 20)}...: ${error || result.status}`);
+          }
+        }
+      }
+
+      // Remover tokens inválidos do banco de dados
+      if (invalidTokens.length > 0) {
+        try {
+          await prisma.deviceToken.deleteMany({
+            where: { id: { in: invalidTokens } },
+          });
+          console.log(`✅ Removidos ${invalidTokens.length} token(s) inválido(s) do banco de dados`);
+        } catch (deleteError) {
+          console.error(`❌ Erro ao remover tokens inválidos:`, deleteError);
+        }
+      }
+
+      console.log(`✅ Notificação enviada: ${successCount} sucesso(s), ${errorCount} erro(s)`);
+    } else {
+      console.warn("⚠️ Resposta da API Expo não contém campo 'data'");
     }
   } catch (error) {
-    console.error("Erro ao enviar notificação:", error);
+    console.error("❌ Erro ao enviar notificação:", error);
   }
 }
 
