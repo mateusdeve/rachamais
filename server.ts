@@ -135,23 +135,201 @@ app.get("/invite/:code", (req, res) => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10b748">
   <title>Convite RachaMais</title>
   <style>
-    * { box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 24px; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #f6f8f6; color: #1a1a1a; text-align: center; }
-    h1 { font-size: 1.5rem; margin-bottom: 8px; }
-    p { color: #666; margin-bottom: 24px; }
-    a { display: inline-block; padding: 14px 28px; margin: 8px; border-radius: 12px; font-weight: 600; text-decoration: none; }
-    .open-app { background: #22C55E; color: #fff; }
-    .appstore { background: #000; color: #fff; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #F9FAFB;
+      color: #111813;
+      text-align: center;
+      line-height: 1.5;
+    }
+    
+    .container {
+      width: 100%;
+      max-width: 480px;
+      padding: 32px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+    }
+    
+    .logo-container {
+      width: 120px;
+      height: 120px;
+      border-radius: 60px;
+      background: rgba(16, 183, 72, 0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 64px;
+      margin-bottom: 8px;
+    }
+    
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      line-height: 40px;
+      color: #111813;
+      margin-bottom: 8px;
+    }
+    
+    .subtitle {
+      font-size: 16px;
+      font-weight: 400;
+      line-height: 24px;
+      color: #6B7280;
+      margin-bottom: 32px;
+      max-width: 320px;
+    }
+    
+    .card {
+      width: 100%;
+      background: #FFFFFF;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      border: 1px solid #E5E7EB;
+    }
+    
+    .card-title {
+      font-size: 20px;
+      font-weight: 600;
+      line-height: 28px;
+      color: #111813;
+      margin-bottom: 12px;
+    }
+    
+    .card-text {
+      font-size: 16px;
+      font-weight: 400;
+      line-height: 24px;
+      color: #6B7280;
+      margin-bottom: 24px;
+    }
+    
+    .button {
+      display: inline-block;
+      width: 100%;
+      padding: 16px 24px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      text-decoration: none;
+      text-align: center;
+      transition: all 0.2s ease;
+      border: none;
+      cursor: pointer;
+      margin-bottom: 12px;
+    }
+    
+    .button-primary {
+      background: #10b748;
+      color: #FFFFFF;
+      box-shadow: 0 2px 8px rgba(16, 183, 72, 0.2);
+    }
+    
+    .button-primary:hover {
+      background: #059669;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(16, 183, 72, 0.3);
+    }
+    
+    .button-primary:active {
+      transform: translateY(0);
+    }
+    
+    .button-secondary {
+      background: #FFFFFF;
+      color: #111813;
+      border: 1px solid #E5E7EB;
+    }
+    
+    .button-secondary:hover {
+      background: #F9FAFB;
+      border-color: #10b748;
+    }
+    
+    .divider {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      margin: 24px 0;
+      gap: 12px;
+    }
+    
+    .divider::before,
+    .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #E5E7EB;
+    }
+    
+    .divider-text {
+      font-size: 12px;
+      font-weight: 400;
+      color: #9CA3AF;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    
+    .footer {
+      margin-top: 32px;
+      font-size: 14px;
+      color: #9CA3AF;
+    }
+    
+    @media (max-width: 480px) {
+      .container {
+        padding: 24px 16px;
+      }
+      
+      h1 {
+        font-size: 24px;
+        line-height: 32px;
+      }
+      
+      .logo-container {
+        width: 100px;
+        height: 100px;
+        font-size: 56px;
+      }
+    }
   </style>
 </head>
 <body>
-  <h1>Você foi convidado para o RachaMais!</h1>
-  <p>Toque no botão abaixo para abrir no app e entrar no grupo.</p>
-  <a href="${appLink}" class="open-app">Abrir no app</a>
-  <p style="margin-top: 16px; font-size: 0.9rem;">Não tem o app?</p>
-  <a href="${APP_STORE_URL}" class="appstore">Baixar na App Store</a>
+  <div class="container">
+    <div class="logo-container">💰</div>
+    <h1>RachaMais</h1>
+    <p class="subtitle">Divida contas sem complicação</p>
+    
+    <div class="card">
+      <h2 class="card-title">Você foi convidado!</h2>
+      <p class="card-text">Toque no botão abaixo para abrir no app e entrar no grupo.</p>
+      
+      <a href="${appLink}" class="button button-primary">Abrir no app</a>
+      
+      <div class="divider">
+        <span class="divider-text">ou</span>
+      </div>
+      
+      <a href="${APP_STORE_URL}" class="button button-secondary">Baixar na App Store</a>
+    </div>
+    
+    <p class="footer">RachaMais © 2026</p>
+  </div>
 </body>
 </html>`;
   res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -515,7 +693,10 @@ app.post("/api/groups/join", async (req, res) => {
 
     const group = await prisma.group.findUnique({
       where: { inviteCode: validation.data.inviteCode },
-      include: { members: true },
+      include: { 
+        members: true,
+        createdBy: { select: { id: true, name: true } },
+      },
     });
 
     if (!group)
@@ -524,6 +705,12 @@ app.post("/api/groups/join", async (req, res) => {
     if (group.members.some((m) => m.userId === payload.userId)) {
       return res.status(409).json({ error: "Você já é membro deste grupo" });
     }
+
+    // Buscar informações do usuário que está entrando
+    const joiningUser = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: { name: true },
+    });
 
     await prisma.groupMember.create({
       data: { groupId: group.id, userId: payload.userId, role: "MEMBER" },
@@ -537,6 +724,17 @@ app.post("/api/groups/join", async (req, res) => {
         description: "Entrou no grupo",
       },
     });
+
+    // Enviar notificações para todos os membros existentes do grupo
+    if (joiningUser) {
+      await sendNotificationToGroup(
+        group.id,
+        payload.userId,
+        "Novo membro no grupo",
+        `${joiningUser.name} entrou no grupo ${group.name}`,
+        { groupId: group.id, type: "MEMBER_JOINED" },
+      );
+    }
 
     res.json({ success: true, groupId: group.id });
   } catch (error) {
@@ -559,23 +757,29 @@ function simplifyDebts(
   to: { id: string; name: string; avatarUrl: string | null };
   amount: number;
 }[] {
+  // Arredondar todos os saldos para 2 casas decimais antes de processar
+  const roundedBalances = balances.map((b) => ({
+    ...b,
+    amount: Math.round(b.amount * 100) / 100,
+  }));
+
   // Criar cópias para não mutar os objetos originais
-  const creditors = balances
-    .filter((b) => b.amount > 0)
+  const creditors = roundedBalances
+    .filter((b) => b.amount > 0.005) // Threshold de meio centavo
     .map((b) => ({
       userId: b.userId,
       userName: b.userName,
       avatarUrl: b.avatarUrl,
-      amount: b.amount,
+      amount: Math.round(b.amount * 100) / 100,
     }))
     .sort((a, b) => b.amount - a.amount);
-  const debtors = balances
-    .filter((b) => b.amount < 0)
+  const debtors = roundedBalances
+    .filter((b) => b.amount < -0.005) // Threshold de meio centavo
     .map((b) => ({
       userId: b.userId,
       userName: b.userName,
       avatarUrl: b.avatarUrl,
-      amount: Math.abs(b.amount),
+      amount: Math.round(Math.abs(b.amount) * 100) / 100,
     }))
     .sort((a, b) => b.amount - a.amount);
 
@@ -590,21 +794,25 @@ function simplifyDebts(
   while (i < creditors.length && j < debtors.length) {
     const cred = creditors[i];
     const deb = debtors[j];
-    const amount = Math.min(cred.amount, deb.amount);
+    const rawAmount = Math.min(cred.amount, deb.amount);
+    const amount = Math.round(rawAmount * 100) / 100; // Arredondar antes de usar
 
-    if (amount <= 0 || amount < 0.01) break; // Evitar valores muito pequenos
+    // Threshold de meio centavo para evitar valores muito pequenos
+    if (amount <= 0 || amount < 0.005) break;
 
     debts.push({
       from: { id: deb.userId, name: deb.userName, avatarUrl: deb.avatarUrl },
       to: { id: cred.userId, name: cred.userName, avatarUrl: cred.avatarUrl },
-      amount: Math.round(amount * 100) / 100, // Arredondar para 2 casas decimais
+      amount: amount,
     });
 
-    cred.amount -= amount;
-    deb.amount -= amount;
+    // Arredondar após subtração para evitar erros de ponto flutuante
+    cred.amount = Math.round((cred.amount - amount) * 100) / 100;
+    deb.amount = Math.round((deb.amount - amount) * 100) / 100;
 
-    if (cred.amount <= 0.01) i++;
-    if (deb.amount <= 0.01) j++;
+    // Usar threshold de meio centavo para determinar se ainda há saldo
+    if (cred.amount <= 0.005) i++;
+    if (deb.amount <= 0.005) j++;
   }
 
   return debts;
@@ -689,7 +897,13 @@ app.delete("/api/groups/:id/members", async (req, res) => {
     // Verificar se o grupo existe
     const group = await prisma.group.findUnique({
       where: { id: req.params.id },
-      include: { members: true },
+      include: { 
+        members: {
+          include: {
+            user: { select: { id: true, name: true } },
+          },
+        },
+      },
     });
 
     if (!group) {
@@ -703,6 +917,9 @@ app.delete("/api/groups/:id/members", async (req, res) => {
         .status(404)
         .json({ error: "Usuário não é membro deste grupo" });
     }
+
+    // Buscar nome do usuário que está saindo
+    const leavingUserName = member.user.name;
 
     // Verificar se o usuário está tentando sair do próprio grupo ou se é admin removendo outro membro
     // Por enquanto, permitir que qualquer membro saia do grupo
@@ -724,6 +941,15 @@ app.delete("/api/groups/:id/members", async (req, res) => {
         description: "Saiu do grupo",
       },
     });
+
+    // Enviar notificações para todos os membros restantes do grupo
+    await sendNotificationToGroup(
+      req.params.id,
+      payload.userId,
+      "Membro saiu do grupo",
+      `${leavingUserName} saiu do grupo ${group.name}`,
+      { groupId: req.params.id, type: "MEMBER_LEFT" },
+    );
 
     res.json({ success: true });
   } catch (error) {
@@ -821,6 +1047,16 @@ app.post("/api/groups/:id/expenses", async (req, res) => {
       },
     });
 
+    // Enviar notificações para todos os membros do grupo (exceto quem criou)
+    const amountFormatted = Number(amount).toFixed(2).replace(".", ",");
+    await sendNotificationToGroup(
+      req.params.id,
+      payload.userId,
+      "Nova despesa adicionada",
+      `${expense.paidBy.name} adicionou "${description}" de R$ ${amountFormatted}`,
+      { groupId: req.params.id, type: "EXPENSE_ADDED", expenseId: expense.id },
+    );
+
     res.status(201).json(expense);
   } catch (error) {
     console.error("Create expense error:", error);
@@ -907,26 +1143,36 @@ app.post("/api/groups/:id/settlements", async (req, res) => {
       });
     }
 
+    // Arredondar saldo e valor do pagamento para evitar problemas de ponto flutuante
+    const roundedBalance = Math.round(currentBalance * 100) / 100;
+    const roundedAmount = Math.round(Number(amount) * 100) / 100;
+
     // Verificar se o valor do pagamento não excede o que é devido
-    const amountDue = Math.abs(currentBalance);
-    if (amount > amountDue) {
+    // Permitir pequena diferença de até 0.01 devido a arredondamentos
+    const amountDue = Math.abs(roundedBalance);
+    if (roundedAmount > amountDue + 0.01) {
       return res.status(400).json({
         error: `${isPayer ? "Você deve apenas" : "Este usuário deve apenas"} R$ ${amountDue.toFixed(2).replace(".", ",")}. O valor do pagamento não pode exceder esse valor.`,
       });
     }
 
     // Garantir que amount é um número válido
-    const settlementAmount = Number(amount);
-    if (isNaN(settlementAmount) || settlementAmount <= 0) {
+    if (isNaN(roundedAmount) || roundedAmount <= 0) {
       return res.status(400).json({ error: "Valor do pagamento inválido" });
     }
+
+    // Usar o valor arredondado para o settlement
+    const settlementAmount = roundedAmount;
+
+    // Garantir que o valor do settlement não exceda o saldo devido (ajustar se necessário)
+    const finalSettlementAmount = Math.min(settlementAmount, amountDue);
 
     const settlement = await prisma.settlement.create({
       data: {
         groupId: req.params.id,
         fromUserId,
         toUserId,
-        amount: settlementAmount,
+        amount: finalSettlementAmount,
         paymentMethod,
         note,
       },
@@ -941,12 +1187,12 @@ app.post("/api/groups/:id/settlements", async (req, res) => {
         groupId: req.params.id,
         userId: payload.userId,
         type: "SETTLEMENT_MADE",
-        description: `Registrou acerto de R$ ${amount.toFixed(2)}`,
+        description: `Registrou acerto de R$ ${finalSettlementAmount.toFixed(2)}`,
       },
     });
 
     // Enviar notificações
-    const amountFormatted = amount.toFixed(2).replace(".", ",");
+    const amountFormatted = finalSettlementAmount.toFixed(2).replace(".", ",");
     await sendNotificationToUser(
       toUserId,
       "Você recebeu um pagamento!",
