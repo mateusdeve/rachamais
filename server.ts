@@ -695,14 +695,16 @@ app.post("/api/groups/join", async (req, res) => {
       where: { inviteCode: validation.data.inviteCode },
       include: { 
         members: true,
-        createdBy: { select: { id: true, name: true } },
+        creator: { select: { id: true, name: true } },
       },
     });
 
-    if (!group)
+    if (!group) {
       return res.status(404).json({ error: "Código de convite inválido" });
+    }
 
-    if (group.members.some((m) => m.userId === payload.userId)) {
+    const isAlreadyMember = group.members.some((m) => m.userId === payload.userId);
+    if (isAlreadyMember) {
       return res.status(409).json({ error: "Você já é membro deste grupo" });
     }
 
