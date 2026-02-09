@@ -9,9 +9,14 @@ interface GroupCardProps {
 }
 
 export function GroupCard({ group, onPress }: GroupCardProps) {
-  const isPositive = group.userBalance > 0;
-  const isNegative = group.userBalance < 0;
-  const isSettled = group.userBalance === 0;
+  // Considerar valores muito próximos de zero (menos de 1 centavo) como zero
+  // Isso evita problemas de arredondamento de ponto flutuante
+  const isBalanceZero = Math.abs(group.userBalance || 0) < 0.01;
+  const normalizedBalance = isBalanceZero ? 0 : (group.userBalance || 0);
+  
+  const isPositive = normalizedBalance > 0;
+  const isNegative = normalizedBalance < 0;
+  const isSettled = normalizedBalance === 0;
 
   return (
     <Pressable
@@ -44,7 +49,7 @@ export function GroupCard({ group, onPress }: GroupCardProps) {
               {isPositive ? 'você recebe' : 'você deve'}
             </Text>
             <Text style={styles.balanceAmount}>
-              R$ {Math.abs(group.userBalance).toFixed(2).replace('.', ',')}
+              R$ {Math.abs(normalizedBalance).toFixed(2).replace('.', ',')}
             </Text>
           </>
         )}

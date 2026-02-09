@@ -1250,6 +1250,14 @@ app.post("/api/groups/:id/settlements", async (req, res) => {
 // ===== NOTIFICATIONS =====
 const EXPO_ACCESS_TOKEN = process.env.EXPO_ACCESS_TOKEN;
 
+// Logar status do token na inicialização (sem mostrar o token completo por segurança)
+if (EXPO_ACCESS_TOKEN) {
+  console.log("✅ EXPO_ACCESS_TOKEN configurado (tamanho:", EXPO_ACCESS_TOKEN.length, "caracteres)");
+} else {
+  console.warn("⚠️ EXPO_ACCESS_TOKEN não está configurado nas variáveis de ambiente!");
+  console.warn("⚠️ Notificações push não funcionarão sem este token.");
+}
+
 async function sendNotificationToUser(
   userId: string,
   title: string,
@@ -1300,7 +1308,17 @@ async function sendNotificationToUser(
     }
 
     // Parsear resposta JSON da API do Expo
-    const responseData = await response.json();
+    let responseData;
+    try {
+      responseData = await response.json();
+    } catch (parseError) {
+      const responseText = await response.text();
+      console.error(`❌ Erro ao parsear resposta da API Expo:`, parseError);
+      console.error(`❌ Resposta recebida:`, responseText.substring(0, 500));
+      return;
+    }
+    
+    console.log(`📥 Resposta da API Expo:`, JSON.stringify(responseData, null, 2));
     
     if (responseData.data) {
       let successCount = 0;
@@ -1387,12 +1405,15 @@ app.post("/api/notifications/register", async (req, res) => {
   try {
     const { token, platform } = req.body;
     if (!token || !platform) {
+      console.warn("⚠️ Tentativa de registrar token sem token ou platform");
       return res
         .status(400)
         .json({ error: "Token e platform são obrigatórios" });
     }
 
-    await prisma.deviceToken.upsert({
+    console.log(`📱 Registrando token para usuário ${payload.userId} (${platform}): ${token.substring(0, 20)}...`);
+
+    const deviceToken = await prisma.deviceToken.upsert({
       where: { token },
       update: { userId: payload.userId, platform, updatedAt: new Date() },
       create: {
@@ -1402,9 +1423,11 @@ app.post("/api/notifications/register", async (req, res) => {
       },
     });
 
+    console.log(`✅ Token registrado com sucesso para usuário ${payload.userId} (ID: ${deviceToken.id})`);
+
     res.json({ success: true });
   } catch (error) {
-    console.error("Register token error:", error);
+    console.error("❌ Erro ao registrar token:", error);
     res.status(500).json({ error: "Erro ao registrar token" });
   }
 });

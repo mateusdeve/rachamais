@@ -89,7 +89,11 @@ export default function HomeScreen() {
     }
   };
 
-  const totalBalance = allGroups.reduce((sum, group) => sum + (group.userBalance || 0), 0);
+  const rawTotalBalance = allGroups.reduce((sum, group) => sum + (group.userBalance || 0), 0);
+  // Considerar valores muito próximos de zero (menos de 1 centavo) como zero
+  // Isso evita problemas de arredondamento de ponto flutuante
+  const isTotalBalanceZero = Math.abs(rawTotalBalance) < 0.01;
+  const totalBalance = isTotalBalanceZero ? 0 : rawTotalBalance;
 
   return (
     <View style={styles.container}>

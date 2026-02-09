@@ -81,20 +81,28 @@ export async function registerForPushNotifications(): Promise<string | null> {
     }
 
     // Obter token
+    console.log('📱 Solicitando token de notificação push...');
     const tokenData = await Notifications.getExpoPushTokenAsync({
       projectId: 'ef9398d9-6719-489a-854c-405aaa0ab9a4', // Do app.json
     });
     const token = tokenData.data;
+    console.log(`✅ Token obtido: ${token.substring(0, 30)}...`);
 
     // Enviar para API
     const platform = Platform.OS === 'ios' ? 'ios' : 'android';
+    console.log(`📤 Enviando token para API (plataforma: ${platform})...`);
     try {
-      await apiClient('/api/notifications/register', {
+      const response = await apiClient('/api/notifications/register', {
         method: 'POST',
         body: JSON.stringify({ token, platform }),
       });
+      console.log('✅ Token registrado na API com sucesso:', response);
     } catch (error) {
-      console.error('Erro ao registrar token na API:', error);
+      console.error('❌ Erro ao registrar token na API:', error);
+      if (error instanceof Error) {
+        console.error('❌ Mensagem de erro:', error.message);
+        console.error('❌ Stack:', error.stack);
+      }
       // Não falhar se a API não estiver disponível
     }
 

@@ -173,7 +173,12 @@ export default function BalancesScreen() {
   }
 
   // Encontrar saldo do usuário logado
-  const userBalance = balancesData.balances.find(b => b.userId === user?.id)?.amount || 0;
+  const rawUserBalance = balancesData.balances.find(b => b.userId === user?.id)?.amount || 0;
+  
+  // Considerar valores muito próximos de zero (menos de 1 centavo) como zero
+  // Isso evita problemas de arredondamento de ponto flutuante
+  const isBalanceZero = Math.abs(rawUserBalance) < 0.01;
+  const userBalance = isBalanceZero ? 0 : rawUserBalance;
 
   // Mapear dívidas simplificadas
   const userDebts = balancesData.debts.map((debt) => {
@@ -181,6 +186,9 @@ export default function BalancesScreen() {
     const isUserOwes = debt.from.id === user?.id;
     return { ...debt, isUserOwed, isUserOwes };
   });
+  
+  // Verificar se há dívidas reais (com valor >= 0.01) que o usuário deve pagar
+  const hasRealDebtsToPay = userDebts.some(d => d.isUserOwes && d.amount >= 0.01);
 
   return (
     <View style={styles.container}>
@@ -272,15 +280,17 @@ export default function BalancesScreen() {
         </View>
       </ScrollView>
 
-      <View style={styles.footer}>
-        <Button
-          onPress={handleLiquidateAll}
-          disabled={liquidating || userDebts.filter(d => d.isUserOwes).length === 0}
-          loading={liquidating}
-        >
-          {liquidating ? 'Liquidando...' : 'Liquidar Tudo'}
-        </Button>
-      </View>
+      {hasRealDebtsToPay && (
+        <View style={styles.footer}>
+          <Button
+            onPress={handleLiquidateAll}
+            disabled={liquidating || !hasRealDebtsToPay}
+            loading={liquidating}
+          >
+            {liquidating ? 'Liquidando...' : 'Liquidar Tudo'}
+          </Button>
+        </View>
+      )}
     </View>
   );
 }
