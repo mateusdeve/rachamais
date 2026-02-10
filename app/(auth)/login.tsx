@@ -3,6 +3,7 @@ import { View, Text, Pressable, ScrollView, StyleSheet, Platform, Image } from '
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
+import * as AuthSession from 'expo-auth-session';
 import * as Google from 'expo-auth-session/providers/google';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -24,11 +25,23 @@ export default function LoginScreen() {
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [isLoading, setIsLoading] = useState(false);
 
+  // Para iOS, usar bundle identifier diretamente como redirect URI
+  // Formato: com.bundleidentifier:/oauthredirect
+  const redirectUri = Platform.OS === 'ios' 
+    ? 'com.rachamais.app:/oauthredirect'
+    : AuthSession.makeRedirectUri();
+
+  // Log para debug
+  console.log('🔍 Platform:', Platform.OS);
+  console.log('🔍 Redirect URI configurado:', redirectUri);
+  console.log('🔍 iOS Client ID presente:', !!process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID);
+
   const [request, response, promptAsync] = Google.useAuthRequest({
     iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
     // Android ainda não configurado - remover quando configurar
     // androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
     clientId: process.env.EXPO_PUBLIC_GOOGLE_EXPO_CLIENT_ID,
+    redirectUri,
   });
 
   const validateEmail = (email: string) => {
