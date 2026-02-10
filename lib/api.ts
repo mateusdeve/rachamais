@@ -234,6 +234,13 @@ export const auth = {
     });
   },
 
+  googleLogin: async (data: { idToken: string }) => {
+    return apiClient<AuthResponse>('/api/auth/google', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
   me: async () => {
     return apiClient<User>('/api/auth/me');
   },

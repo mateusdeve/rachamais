@@ -11,12 +11,11 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.rachamais.app",
-      "buildNumber": "9",
+      "buildNumber": "10",
       "config": {
         "usesNonExemptEncryption": false
       },
       "infoPlist": {
-        "NSUserTrackingUsageDescription": "Este app não rastreia usuários.",
         "NSCameraUsageDescription": "Permitimos acesso à câmera para atualizar sua foto de perfil.",
         "NSPhotoLibraryUsageDescription": "Permitimos acesso à galeria para atualizar sua foto de perfil.",
         "NSUserNotificationsUsageDescription": "Permitimos notificações para avisar sobre pagamentos e atividades nos grupos."

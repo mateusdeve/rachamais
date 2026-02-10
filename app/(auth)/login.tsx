@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, Platform, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { colors } from '@/constants/colors';
@@ -10,15 +12,24 @@ import { typography } from '@/constants/typography';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 
+WebBrowser.maybeCompleteAuthSession();
+
 export default function LoginScreen() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const { showError, showSuccess } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [isLoading, setIsLoading] = useState(false);
+
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    // Android ainda não configurado - remover quando configurar
+    // androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    clientId: process.env.EXPO_PUBLIC_GOOGLE_EXPO_CLIENT_ID,
+  });
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -62,6 +73,38 @@ export default function LoginScreen() {
       }
     }
   };
+
+  useEffect(() => {
+    const handleGoogleResponse = async () => {
+      if (!response) return;
+
+      if (response.type === 'success') {
+        const idToken = response.authentication?.idToken;
+
+        if (!idToken) {
+          showError('Não foi possível obter o token do Google.');
+          return;
+        }
+
+        setIsLoading(true);
+        try {
+          await loginWithGoogle(idToken);
+          showSuccess('Login com Google realizado com sucesso!');
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : 'Erro ao fazer login com Google';
+          showError(errorMessage);
+        } finally {
+          setIsLoading(false);
+        }
+      } else if (response.type === 'error') {
+        showError('Erro ao autenticar com Google.');
+      }
+    };
+
+    handleGoogleResponse();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [response]);
 
   return (
     <ScrollView
@@ -156,6 +199,16 @@ export default function LoginScreen() {
               styles.googleButton,
               pressed && styles.googleButtonPressed,
             ]}
+            onPress={() => {
+              if (!request) {
+                showError('Serviço de login com Google não está pronto. Tente novamente.');
+                return;
+              }
+              promptAsync().catch((err) => {
+                console.error('Erro ao iniciar login com Google:', err);
+                showError('Não foi possível iniciar o login com Google.');
+              });
+            }}
           >
             <Ionicons name="logo-google" size={20} color="#4285F4" />
             <Text style={styles.googleButtonText}>Entrar com Google</Text>

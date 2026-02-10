@@ -3,12 +3,37 @@ import bcrypt from "bcryptjs";
 import cors from "cors";
 import express from "express";
 import jwt from "jsonwebtoken";
+import { OAuth2Client } from "google-auth-library";
 import { z } from "zod";
 
 const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET!;
+
+// IDs de clientes Google (separados por vírgula) usados para verificar o idToken
+// Exemplo: GOOGLE_OAUTH_CLIENT_IDS="iosClientId,androidClientId"
+const GOOGLE_OAUTH_CLIENT_IDS = (process.env.GOOGLE_OAUTH_CLIENT_IDS || "")
+  .split(",")
+  .map((id) => id.trim())
+  .filter((id) => id.length > 0);
+
+const googleOAuthClient =
+  GOOGLE_OAUTH_CLIENT_IDS.length > 0 ? new OAuth2Client() : null;
+
+// Logar configuração do Google OAuth na inicialização
+if (GOOGLE_OAUTH_CLIENT_IDS.length > 0) {
+  console.log(
+    `✅ Google OAuth configurado com ${GOOGLE_OAUTH_CLIENT_IDS.length} client ID(s):`,
+  );
+  GOOGLE_OAUTH_CLIENT_IDS.forEach((id, index) => {
+    console.log(`   ${index + 1}. ${id.substring(0, 30)}...`);
+  });
+} else {
+  console.warn(
+    "⚠️ GOOGLE_OAUTH_CLIENT_IDS não configurado. Login com Google não funcionará.",
+  );
+}
 
 // Verificar variáveis de ambiente críticas na inicialização
 if (!JWT_SECRET) {
@@ -31,6 +56,10 @@ const registerSchema = z.object({
 const loginSchema = z.object({
   email: z.string().email("Email inválido"),
   password: z.string().min(1, "Senha é obrigatória"),
+});
+
+const googleAuthSchema = z.object({
+  idToken: z.string().min(1, "idToken é obrigatório"),
 });
 
 const createGroupSchema = z.object({
@@ -453,6 +482,91 @@ app.post("/api/auth/login", async (req, res) => {
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({ error: "Erro interno do servidor" });
+  }
+});
+
+app.post("/api/auth/google", async (req, res) => {
+  try {
+    const validation = googleAuthSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res
+        .status(400)
+        .json({ error: validation.error.errors[0].message });
+    }
+
+    if (!googleOAuthClient || GOOGLE_OAUTH_CLIENT_IDS.length === 0) {
+      console.error(
+        "Google OAuth não configurado corretamente. Defina GOOGLE_OAUTH_CLIENT_IDS no ambiente.",
+      );
+      return res.status(500).json({
+        error:
+          "Login com Google não está configurado no servidor. Tente novamente mais tarde.",
+      });
+    }
+
+    const { idToken } = validation.data;
+
+    // Verificar token com Google
+    const ticket = await googleOAuthClient.verifyIdToken({
+      idToken,
+      audience: GOOGLE_OAUTH_CLIENT_IDS,
+    });
+
+    const payload = ticket.getPayload();
+
+    if (!payload) {
+      return res
+        .status(401)
+        .json({ error: "Token do Google inválido ou sem dados." });
+    }
+
+    const email = payload.email;
+    const name = payload.name || "Usuário";
+    const picture = payload.picture || null;
+
+    if (!email) {
+      return res
+        .status(400)
+        .json({ error: "Conta Google não possui email válido." });
+    }
+
+    // Buscar ou criar usuário
+    let user = await prisma.user.findUnique({ where: { email } });
+
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          name,
+          email,
+          avatarUrl: picture,
+          // Senha não é usada para login com Google
+          password: await hashPassword(
+            `google-${email}-${Date.now().toString()}`,
+          ),
+        },
+      });
+    } else if (!user.avatarUrl && picture) {
+      // Se o usuário não tiver avatar, salvar a foto do Google
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { avatarUrl: picture },
+      });
+    }
+
+    const token = generateToken({ userId: user.id, email: user.email });
+
+    return res.json({
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        avatarUrl: user.avatarUrl,
+      },
+      token,
+    });
+  } catch (error) {
+    console.error("Google auth error:", error);
+    res.status(500).json({ error: "Erro ao autenticar com Google" });
   }
 });
 
@@ -1079,11 +1193,16 @@ app.post("/api/groups/:id/expenses", async (req, res) => {
       },
     });
 
-    // Enviar notificações para todos os membros do grupo (exceto quem criou)
+    // Enviar notificações apenas para os usuários envolvidos na despesa
     const amountFormatted = Number(amount).toFixed(2).replace(".", ",");
-    await sendNotificationToGroup(
-      req.params.id,
-      payload.userId,
+
+    const participantIds = new Set<string>();
+    participantIds.add(paidById);
+    calculatedSplits.forEach((s) => participantIds.add(s.userId));
+
+    // Não notificar o próprio usuário que criou duas vezes, se ele estiver na lista
+    await sendNotificationToUsers(
+      Array.from(participantIds).filter((id) => id !== payload.userId),
       "Nova despesa adicionada",
       `${expense.paidBy.name} adicionou "${description}" de R$ ${amountFormatted}`,
       { groupId: req.params.id, type: "EXPENSE_ADDED", expenseId: expense.id },
@@ -1232,11 +1351,11 @@ app.post("/api/groups/:id/settlements", async (req, res) => {
       { groupId: req.params.id, type: "SETTLEMENT_RECEIVED" },
     );
 
-    await sendNotificationToGroup(
-      req.params.id,
-      payload.userId,
-      "Novo pagamento no grupo",
-      `${settlement.fromUser.name} pagou R$ ${amountFormatted} para ${settlement.toUser.name}`,
+    // Notificar também o pagador sobre o registro do pagamento
+    await sendNotificationToUser(
+      fromUserId,
+      "Pagamento registrado",
+      `Você pagou R$ ${amountFormatted} para ${settlement.toUser.name}`,
       { groupId: req.params.id, type: "SETTLEMENT_MADE" },
     );
 
@@ -1396,6 +1515,21 @@ async function sendNotificationToGroup(
   } catch (error) {
     console.error("Erro ao enviar notificação para grupo:", error);
   }
+}
+
+async function sendNotificationToUsers(
+  userIds: string[],
+  title: string,
+  body: string,
+  data?: Record<string, any>,
+): Promise<void> {
+  const uniqueUserIds = Array.from(new Set(userIds));
+
+  await Promise.all(
+    uniqueUserIds.map((userId) =>
+      sendNotificationToUser(userId, title, body, data),
+    ),
+  );
 }
 
 app.post("/api/notifications/register", async (req, res) => {
