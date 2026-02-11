@@ -20,6 +20,11 @@ export default function Index() {
       const path = parsed.path || '';
       const queryParams = parsed.queryParams || {};
 
+      // Ignorar URLs de OAuth redirect (Google login) - podem reaparecer ao reabrir o app
+      if (path.includes('oauthredirect') || (queryParams.code && queryParams.state)) {
+        return;
+      }
+
       // Verificar se é um link de convite: rachamais://invite/CODE ou https://.../invite/CODE
       let inviteCode: string | null = null;
 
@@ -29,11 +34,14 @@ export default function Index() {
         if (codeIndex >= 0 && pathParts[codeIndex + 1]) {
           inviteCode = pathParts[codeIndex + 1];
         }
-      } else if (queryParams.code) {
-        // Extrair código dos query params
-        inviteCode = Array.isArray(queryParams.code)
+      } else if (queryParams.code && !queryParams.state) {
+        const code = Array.isArray(queryParams.code)
           ? queryParams.code[0]
           : String(queryParams.code);
+        // OAuth codes são longos e contêm caracteres como +, /, = - convites são mais curtos
+        if (code.length < 50 && !code.includes('+') && !code.includes('/')) {
+          inviteCode = code;
+        }
       }
 
       if (inviteCode) {

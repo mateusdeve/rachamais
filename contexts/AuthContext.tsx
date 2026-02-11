@@ -58,16 +58,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const storedUser = await AsyncStorage.getItem(USER_KEY);
 
       if (storedToken && storedUser) {
+        let parsedUser: User;
+        try {
+          parsedUser = JSON.parse(storedUser);
+        } catch (parseError) {
+          console.error('Error parsing stored user:', parseError);
+          await clearAuthData();
+          setIsLoading(false);
+          return;
+        }
+
         setToken(storedToken);
-        setUser(JSON.parse(storedUser));
-        
+        setUser(parsedUser);
+
         // Verificar se o token ainda é válido
         try {
           const currentUser = await auth.me();
           setUser(currentUser);
           await AsyncStorage.setItem(USER_KEY, JSON.stringify(currentUser));
         } catch (error) {
-          // Token inválido, limpar dados
+          // Token inválido ou sem rede, limpar dados
           await clearAuthData();
         }
       }

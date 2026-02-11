@@ -31,11 +31,6 @@ export default function LoginScreen() {
     ? 'com.rachamais.app:/oauthredirect'
     : AuthSession.makeRedirectUri();
 
-  // Log para debug
-  console.log('🔍 Platform:', Platform.OS);
-  console.log('🔍 Redirect URI configurado:', redirectUri);
-  console.log('🔍 iOS Client ID presente:', !!process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID);
-
   const [request, response, promptAsync] = Google.useAuthRequest({
     iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
     // Android ainda não configurado - remover quando configurar
