@@ -1,19 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, Platform, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as WebBrowser from 'expo-web-browser';
-import * as AuthSession from 'expo-auth-session';
-import * as Google from 'expo-auth-session/providers/google';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { GoogleLoginButton } from '@/components/GoogleLoginButton';
 import { colors } from '@/constants/colors';
 import { spacing } from '@/constants/spacing';
 import { typography } from '@/constants/typography';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
-
-WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -25,19 +21,9 @@ export default function LoginScreen() {
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [isLoading, setIsLoading] = useState(false);
 
-  // Para iOS, usar bundle identifier diretamente como redirect URI
-  // Formato: com.bundleidentifier:/oauthredirect
-  const redirectUri = Platform.OS === 'ios' 
-    ? 'com.rachamais.app:/oauthredirect'
-    : AuthSession.makeRedirectUri();
-
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-    // Android ainda não configurado - remover quando configurar
-    // androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-    clientId: process.env.EXPO_PUBLIC_GOOGLE_EXPO_CLIENT_ID,
-    redirectUri,
-  });
+  const hasGoogleConfig =
+    !!process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID &&
+    !!process.env.EXPO_PUBLIC_GOOGLE_EXPO_CLIENT_ID;
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -82,37 +68,15 @@ export default function LoginScreen() {
     }
   };
 
-  useEffect(() => {
-    const handleGoogleResponse = async () => {
-      if (!response) return;
-
-      if (response.type === 'success') {
-        const idToken = response.authentication?.idToken;
-
-        if (!idToken) {
-          showError('Não foi possível obter o token do Google.');
-          return;
-        }
-
-        setIsLoading(true);
-        try {
-          await loginWithGoogle(idToken);
-          showSuccess('Login com Google realizado com sucesso!');
-        } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : 'Erro ao fazer login com Google';
-          showError(errorMessage);
-        } finally {
-          setIsLoading(false);
-        }
-      } else if (response.type === 'error') {
-        showError('Erro ao autenticar com Google.');
-      }
-    };
-
-    handleGoogleResponse();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [response]);
+  const handleGoogleSuccess = async (idToken: string) => {
+    setIsLoading(true);
+    try {
+      await loginWithGoogle(idToken);
+      showSuccess('Login com Google realizado com sucesso!');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <ScrollView
@@ -196,31 +160,21 @@ export default function LoginScreen() {
             </Button>
           </View>
 
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>ou</Text>
-            <View style={styles.dividerLine} />
-          </View>
+          {hasGoogleConfig && (
+            <>
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>ou</Text>
+                <View style={styles.dividerLine} />
+              </View>
 
-          <Pressable
-            style={({ pressed }) => [
-              styles.googleButton,
-              pressed && styles.googleButtonPressed,
-            ]}
-            onPress={() => {
-              if (!request) {
-                showError('Serviço de login com Google não está pronto. Tente novamente.');
-                return;
-              }
-              promptAsync().catch((err) => {
-                console.error('Erro ao iniciar login com Google:', err);
-                showError('Não foi possível iniciar o login com Google.');
-              });
-            }}
-          >
-            <Ionicons name="logo-google" size={20} color="#4285F4" />
-            <Text style={styles.googleButtonText}>Entrar com Google</Text>
-          </Pressable>
+              <GoogleLoginButton
+                onSuccess={handleGoogleSuccess}
+                onError={showError}
+                disabled={isLoading}
+              />
+            </>
+          )}
         </View>
 
         <View style={styles.footer}>
@@ -324,35 +278,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 1,
-  },
-  googleButton: {
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingVertical: spacing.md,
-    borderRadius: 12,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-      },
-      android: { elevation: 2 },
-    }),
-  },
-  googleButtonPressed: {
-    opacity: 0.9,
-    backgroundColor: colors.surface,
-  },
-  googleButtonText: {
-    ...typography.styles.bodyBold,
-    color: colors.text,
   },
   footer: {
     marginTop: spacing.xl,

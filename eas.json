@@ -1,31 +1,27 @@
 {
-  "cli": {
-    "version": ">= 5.2.0"
-  },
+  "cli": { "version": ">= 5.2.0" },
   "build": {
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "ios": {
-        "simulator": true
-      }
+      "ios": { "simulator": true }
     },
     "preview": {
       "distribution": "internal",
-      "ios": {
-        "simulator": false
-      },
-      "android": {
-        "buildType": "apk"
+      "ios": { "simulator": false },
+      "android": { "buildType": "apk" },
+      "env": {
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "225872554699-185uva6lk6uoqif6fc3b327f86iao7aa.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_EXPO_CLIENT_ID": "225872554699-7t97j1m29ab9l2hh405ldkbi66v21foc.apps.googleusercontent.com"
       }
     },
     "production": {
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://rachamais-production.up.railway.app"
+        "EXPO_PUBLIC_API_URL": "https://rachamais-production.up.railway.app",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "225872554699-185uva6lk6uoqif6fc3b327f86iao7aa.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_EXPO_CLIENT_ID": "225872554699-7t97j1m29ab9l2hh405ldkbi66v21foc.apps.googleusercontent.com"
       }
     }
   },
-  "submit": {
-    "production": {}
-  }
+  "submit": { "production": {} }
 }
