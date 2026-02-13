@@ -1818,7 +1818,7 @@ function validatePixKey(pixKey: string | null | undefined): { valid: boolean; ty
 }
 
 const updateUserSchema = z.object({
-  name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres").max(100, "Nome muito longo"),
+  name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres").max(100, "Nome muito longo").optional(),
   pixKey: z.string().nullable().optional(),
 });
 
