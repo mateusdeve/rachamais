@@ -13,7 +13,7 @@ interface AuthContextType {
   register: (name: string, email: string, password: string) => Promise<void>;
   loginWithGoogle: (idToken: string) => Promise<void>;
   loginWithApple: (identityToken: string, fullName?: string | null) => Promise<void>;
-  updateProfile: (name: string) => Promise<void>;
+  updateProfile: (name?: string, pixKey?: string | null) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -195,9 +195,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.replace('/(auth)/login');
   };
 
-  const updateProfile = async (name: string) => {
+  const updateProfile = async (name?: string, pixKey?: string | null) => {
     try {
-      const updatedUser = await users.updateProfile({ name });
+      const updateData: { name?: string; pixKey?: string | null } = {};
+      if (name !== undefined) updateData.name = name;
+      if (pixKey !== undefined) updateData.pixKey = pixKey;
+      
+      const updatedUser = await users.updateProfile(updateData);
       setUser(updatedUser);
       await AsyncStorage.setItem(USER_KEY, JSON.stringify(updatedUser));
     } catch (error) {

@@ -111,12 +111,13 @@ export interface Balance {
   userId: string;
   userName: string;
   avatarUrl: string | null;
+  pixKey?: string | null;
   amount: number;
 }
 
 export interface SimplifiedDebt {
-  from: { id: string; name: string; avatarUrl: string | null };
-  to: { id: string; name: string; avatarUrl: string | null };
+  from: { id: string; name: string; avatarUrl: string | null; pixKey?: string | null };
+  to: { id: string; name: string; avatarUrl: string | null; pixKey?: string | null };
   amount: number;
 }
 
@@ -366,7 +367,7 @@ export const users = {
     return apiClient<User[]>(`/api/users/search?q=${encodeURIComponent(query)}`);
   },
 
-  updateProfile: async (data: { name: string }) => {
+  updateProfile: async (data: { name?: string; pixKey?: string | null }) => {
     return apiClient<User>('/api/users/me', {
       method: 'PUT',
       body: JSON.stringify(data),

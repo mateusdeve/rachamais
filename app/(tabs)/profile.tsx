@@ -11,6 +11,7 @@ import { spacing } from '@/constants/spacing';
 import { typography } from '@/constants/typography';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
+import { validatePixKey } from '@/lib/utils/pixValidation';
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
 
@@ -22,6 +23,10 @@ export default function ProfileScreen() {
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(user?.name || '');
   const [isSaving, setIsSaving] = useState(false);
+  const [isEditingPixKey, setIsEditingPixKey] = useState(false);
+  const [editedPixKey, setEditedPixKey] = useState(user?.pixKey || '');
+  const [pixKeyError, setPixKeyError] = useState<string | undefined>();
+  const [pixKeyType, setPixKeyType] = useState<string | undefined>();
 
   const handleEditName = () => {
     setEditedName(user?.name || '');
@@ -53,6 +58,81 @@ export default function ProfileScreen() {
       showError(error instanceof Error ? error.message : 'Erro ao atualizar nome');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleEditPixKey = () => {
+    setEditedPixKey(user?.pixKey || '');
+    setPixKeyError(undefined);
+    setPixKeyType(undefined);
+    setIsEditingPixKey(true);
+  };
+
+  const handleCancelEditPixKey = () => {
+    setIsEditingPixKey(false);
+    setEditedPixKey(user?.pixKey || '');
+    setPixKeyError(undefined);
+    setPixKeyType(undefined);
+  };
+
+  const handleSavePixKey = async () => {
+    const trimmedKey = editedPixKey.trim();
+    
+    // Se vazio, permite limpar a chave
+    if (trimmedKey === '') {
+      setIsSaving(true);
+      try {
+        await updateProfile(undefined, null);
+        showSuccess('Chave PIX removida com sucesso!');
+        setIsEditingPixKey(false);
+        setPixKeyType(undefined);
+      } catch (error) {
+        showError(error instanceof Error ? error.message : 'Erro ao remover chave PIX');
+      } finally {
+        setIsSaving(false);
+      }
+      return;
+    }
+
+    // Validar formato
+    const validation = validatePixKey(trimmedKey);
+    if (!validation.valid) {
+      setPixKeyError(validation.error);
+      return;
+    }
+
+    if (trimmedKey === user?.pixKey) {
+      setIsEditingPixKey(false);
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await updateProfile(undefined, trimmedKey);
+      showSuccess('Chave PIX atualizada com sucesso!');
+      setIsEditingPixKey(false);
+      setPixKeyType(validation.type);
+    } catch (error) {
+      showError(error instanceof Error ? error.message : 'Erro ao atualizar chave PIX');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handlePixKeyChange = (text: string) => {
+    setEditedPixKey(text);
+    setPixKeyError(undefined);
+    
+    // Validar em tempo real
+    if (text.trim().length > 0) {
+      const validation = validatePixKey(text.trim());
+      if (validation.valid && validation.type) {
+        setPixKeyType(validation.type);
+      } else {
+        setPixKeyType(undefined);
+      }
+    } else {
+      setPixKeyType(undefined);
     }
   };
 
@@ -197,6 +277,91 @@ export default function ProfileScreen() {
               </View>
             </View>
           </Pressable>
+
+          <View style={styles.settingsCard}>
+            <View style={styles.settingsItem}>
+              <View style={styles.settingsItemLeft}>
+                <View style={styles.iconContainer}>
+                  <Ionicons name="qr-code-outline" size={20} color={colors.text} />
+                </View>
+                <View style={styles.pixKeyContainer}>
+                  <Text style={styles.settingsItemText}>Chave PIX</Text>
+                  {isEditingPixKey ? (
+                    <View style={styles.pixKeyEditContainer}>
+                      <TextInput
+                        style={styles.pixKeyInput}
+                        value={editedPixKey}
+                        onChangeText={handlePixKeyChange}
+                        placeholder="CPF, email, telefone ou chave aleatória"
+                        placeholderTextColor={colors.textSecondary}
+                        autoFocus
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                      />
+                      {pixKeyType && (
+                        <Text style={styles.pixKeyType}>{pixKeyType}</Text>
+                      )}
+                      {pixKeyError && (
+                        <Text style={styles.pixKeyError}>{pixKeyError}</Text>
+                      )}
+                      <View style={styles.pixKeyActions}>
+                        <Pressable
+                          onPress={handleSavePixKey}
+                          disabled={isSaving || !!pixKeyError}
+                          style={({ pressed }) => [
+                            styles.pixKeyActionButton,
+                            pressed && styles.buttonPressed,
+                            (isSaving || !!pixKeyError) && styles.pixKeyActionButtonDisabled,
+                          ]}
+                        >
+                          <Ionicons name="checkmark" size={18} color={colors.primary} />
+                        </Pressable>
+                        <Pressable
+                          onPress={handleCancelEditPixKey}
+                          disabled={isSaving}
+                          style={({ pressed }) => [
+                            styles.pixKeyActionButton,
+                            pressed && styles.buttonPressed,
+                          ]}
+                        >
+                          <Ionicons name="close" size={18} color={colors.textSecondary} />
+                        </Pressable>
+                      </View>
+                    </View>
+                  ) : (
+                    <View style={styles.pixKeyDisplayContainer}>
+                      <Text style={[styles.pixKeyValue, !user?.pixKey && styles.pixKeyValueEmpty]}>
+                        {user?.pixKey || 'Não cadastrada'}
+                      </Text>
+                      {user?.pixKey && (
+                        <Pressable
+                          onPress={handleEditPixKey}
+                          style={({ pressed }) => [
+                            styles.editPixKeyButton,
+                            pressed && styles.buttonPressed,
+                          ]}
+                        >
+                          <Ionicons name="pencil" size={14} color={colors.primary} />
+                        </Pressable>
+                      )}
+                      {!user?.pixKey && (
+                        <Pressable
+                          onPress={handleEditPixKey}
+                          style={({ pressed }) => [
+                            styles.addPixKeyButton,
+                            pressed && styles.buttonPressed,
+                          ]}
+                        >
+                          <Ionicons name="add-circle-outline" size={16} color={colors.primary} />
+                          <Text style={styles.addPixKeyText}>Adicionar</Text>
+                        </Pressable>
+                      )}
+                    </View>
+                  )}
+                </View>
+              </View>
+            </View>
+          </View>
 
         </View>
 
@@ -480,5 +645,80 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: spacing.xl,
     marginBottom: spacing.lg,
+  },
+  pixKeyContainer: {
+    flex: 1,
+  },
+  pixKeyDisplayContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  pixKeyValue: {
+    ...typography.styles.body,
+    color: colors.text,
+    flex: 1,
+  },
+  pixKeyValueEmpty: {
+    color: colors.textSecondary,
+  },
+  editPixKeyButton: {
+    padding: spacing.xs,
+    borderRadius: 6,
+  },
+  addPixKeyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.xs,
+    paddingVertical: spacing.xs,
+  },
+  addPixKeyText: {
+    ...typography.styles.body,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  pixKeyEditContainer: {
+    marginTop: spacing.sm,
+    gap: spacing.xs,
+  },
+  pixKeyInput: {
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    fontSize: 14,
+    color: colors.text,
+    minHeight: 44,
+  },
+  pixKeyType: {
+    ...typography.styles.small,
+    color: colors.primary,
+    fontWeight: '600',
+    paddingLeft: spacing.xs,
+  },
+  pixKeyError: {
+    ...typography.styles.small,
+    color: colors.error,
+    paddingLeft: spacing.xs,
+  },
+  pixKeyActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  pixKeyActionButton: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    backgroundColor: colors.background,
+  },
+  pixKeyActionButtonDisabled: {
+    opacity: 0.5,
   },
 });

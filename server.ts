@@ -996,11 +996,12 @@ function simplifyDebts(
     userId: string;
     userName: string;
     avatarUrl: string | null;
+    pixKey: string | null;
     amount: number;
   }[],
 ): {
-  from: { id: string; name: string; avatarUrl: string | null };
-  to: { id: string; name: string; avatarUrl: string | null };
+  from: { id: string; name: string; avatarUrl: string | null; pixKey: string | null };
+  to: { id: string; name: string; avatarUrl: string | null; pixKey: string | null };
   amount: number;
 }[] {
   // Arredondar todos os saldos para 2 casas decimais antes de processar
@@ -1017,6 +1018,7 @@ function simplifyDebts(
       userId: b.userId,
       userName: b.userName,
       avatarUrl: b.avatarUrl,
+      pixKey: b.pixKey,
       amount: Math.round(b.amount * 100) / 100,
     }))
     .sort((a, b) => b.amount - a.amount);
@@ -1027,6 +1029,7 @@ function simplifyDebts(
       userId: b.userId,
       userName: b.userName,
       avatarUrl: b.avatarUrl,
+      pixKey: b.pixKey,
       amount: Math.round(Math.abs(b.amount) * 100) / 100,
     }))
     .sort((a, b) => b.amount - a.amount);
@@ -1049,8 +1052,8 @@ function simplifyDebts(
     if (amount <= 0 || amount < 0.01) break;
 
     debts.push({
-      from: { id: deb.userId, name: deb.userName, avatarUrl: deb.avatarUrl },
-      to: { id: cred.userId, name: cred.userName, avatarUrl: cred.avatarUrl },
+      from: { id: deb.userId, name: deb.userName, avatarUrl: deb.avatarUrl, pixKey: deb.pixKey },
+      to: { id: cred.userId, name: cred.userName, avatarUrl: cred.avatarUrl, pixKey: cred.pixKey },
       amount: amount,
     });
 
@@ -1089,6 +1092,7 @@ app.get("/api/groups/:id/balances", async (req, res) => {
         userId: member.user.id,
         userName: member.user.name,
         avatarUrl: member.user.avatarUrl,
+        pixKey: member.user.pixKey,
         amount: await calculateUserBalance(group.id, member.userId),
       })),
     );
@@ -1777,8 +1781,45 @@ app.get("/api/users/search", async (req, res) => {
   }
 });
 
+// Função para validar chave PIX
+function validatePixKey(pixKey: string | null | undefined): { valid: boolean; type?: string; error?: string } {
+  if (!pixKey || pixKey.trim().length === 0) {
+    return { valid: true }; // Chave vazia é válida (opcional)
+  }
+
+  const key = pixKey.trim();
+
+  // CPF: 11 dígitos numéricos
+  if (/^\d{11}$/.test(key)) {
+    return { valid: true, type: 'CPF' };
+  }
+
+  // Email: formato válido
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (emailRegex.test(key)) {
+    return { valid: true, type: 'Email' };
+  }
+
+  // Telefone: formato brasileiro (+55 seguido de DDD + número) ou apenas números
+  if (/^\+55\d{10,11}$/.test(key) || /^\d{10,11}$/.test(key)) {
+    return { valid: true, type: 'Telefone' };
+  }
+
+  // Chave aleatória: formato UUID
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (uuidRegex.test(key)) {
+    return { valid: true, type: 'Chave Aleatória' };
+  }
+
+  return {
+    valid: false,
+    error: 'Chave PIX inválida. Use CPF (11 dígitos), email, telefone (+55DDD...) ou chave aleatória (UUID)',
+  };
+}
+
 const updateUserSchema = z.object({
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres").max(100, "Nome muito longo"),
+  pixKey: z.string().nullable().optional(),
 });
 
 app.put("/api/users/me", async (req, res) => {
@@ -1793,11 +1834,23 @@ app.put("/api/users/me", async (req, res) => {
         .json({ error: validation.error.errors[0].message });
     }
 
-    const { name } = validation.data;
+    const { name, pixKey } = validation.data;
+
+    // Validar chave PIX se fornecida
+    if (pixKey !== undefined) {
+      const pixValidation = validatePixKey(pixKey);
+      if (!pixValidation.valid) {
+        return res.status(400).json({ error: pixValidation.error });
+      }
+    }
+
+    const updateData: { name?: string; pixKey?: string | null } = {};
+    if (name !== undefined) updateData.name = name;
+    if (pixKey !== undefined) updateData.pixKey = pixKey?.trim() || null;
 
     const user = await prisma.user.update({
       where: { id: payload.userId },
-      data: { name },
+      data: updateData,
       select: {
         id: true,
         name: true,
