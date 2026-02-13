@@ -365,6 +365,13 @@ export const users = {
   search: async (query: string) => {
     return apiClient<User[]>(`/api/users/search?q=${encodeURIComponent(query)}`);
   },
+
+  updateProfile: async (data: { name: string }) => {
+    return apiClient<User>('/api/users/me', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
 };
 
 // API de Atividades

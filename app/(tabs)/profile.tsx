@@ -1,20 +1,60 @@
 import { useState } from 'react';
-import { View, Text, ScrollView, Pressable, Switch, StyleSheet, Platform, Alert } from 'react-native';
+import { View, Text, ScrollView, Pressable, Switch, StyleSheet, Platform, Alert, TextInput, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { Avatar } from '@/components/ui/Avatar';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 import { colors } from '@/constants/colors';
 import { spacing } from '@/constants/spacing';
 import { typography } from '@/constants/typography';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, updateProfile } = useAuth();
+  const { showSuccess, showError } = useToast();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState(user?.name || '');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleEditName = () => {
+    setEditedName(user?.name || '');
+    setIsEditingName(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingName(false);
+    setEditedName(user?.name || '');
+  };
+
+  const handleSaveName = async () => {
+    if (!editedName.trim() || editedName.trim().length < 2) {
+      showError('Nome deve ter pelo menos 2 caracteres');
+      return;
+    }
+
+    if (editedName.trim() === user?.name) {
+      setIsEditingName(false);
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await updateProfile(editedName.trim());
+      showSuccess('Nome atualizado com sucesso!');
+      setIsEditingName(false);
+    } catch (error) {
+      showError(error instanceof Error ? error.message : 'Erro ao atualizar nome');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -66,7 +106,55 @@ export default function ProfileScreen() {
               <Text style={styles.avatarEditIcon}>📷</Text>
             </Pressable>
           </View>
-          <Text style={styles.userName}>{user?.name || 'Usuário'}</Text>
+          <View style={styles.nameContainer}>
+            {isEditingName ? (
+              <View style={styles.nameEditContainer}>
+                <TextInput
+                  style={styles.nameInput}
+                  value={editedName}
+                  onChangeText={setEditedName}
+                  placeholder="Seu nome"
+                  placeholderTextColor={colors.textSecondary}
+                  autoFocus
+                  maxLength={100}
+                />
+                <Pressable
+                  onPress={handleSaveName}
+                  disabled={isSaving}
+                  style={({ pressed }) => [
+                    styles.nameEditButton,
+                    pressed && styles.buttonPressed,
+                    isSaving && styles.nameEditButtonDisabled,
+                  ]}
+                >
+                  <Ionicons name="checkmark" size={20} color={colors.primary} />
+                </Pressable>
+                <Pressable
+                  onPress={handleCancelEdit}
+                  disabled={isSaving}
+                  style={({ pressed }) => [
+                    styles.nameEditButton,
+                    pressed && styles.buttonPressed,
+                  ]}
+                >
+                  <Ionicons name="close" size={20} color={colors.textSecondary} />
+                </Pressable>
+              </View>
+            ) : (
+              <View style={styles.nameDisplayContainer}>
+                <Text style={styles.userName}>{user?.name || 'Usuário'}</Text>
+                <Pressable
+                  onPress={handleEditName}
+                  style={({ pressed }) => [
+                    styles.editNameButton,
+                    pressed && styles.buttonPressed,
+                  ]}
+                >
+                  <Ionicons name="pencil" size={16} color={colors.primary} />
+                </Pressable>
+              </View>
+            )}
+          </View>
           <Text style={styles.userEmail}>{user?.email || ''}</Text>
         </View>
 
@@ -238,10 +326,54 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#fff',
   },
+  nameContainer: {
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  nameDisplayContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   userName: {
     ...typography.styles.h3,
     color: colors.text,
-    marginBottom: spacing.xs,
+  },
+  editNameButton: {
+    padding: spacing.xs,
+    borderRadius: 8,
+  },
+  nameEditContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    width: '100%',
+    maxWidth: 300,
+  },
+  nameInput: {
+    flex: 1,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    fontSize: 20,
+    fontWeight: '600',
+    color: colors.text,
+    textAlign: 'center',
+  },
+  nameEditButton: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    backgroundColor: colors.background,
+  },
+  nameEditButtonDisabled: {
+    opacity: 0.5,
   },
   userEmail: {
     ...typography.styles.body,

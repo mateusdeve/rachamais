@@ -1777,6 +1777,44 @@ app.get("/api/users/search", async (req, res) => {
   }
 });
 
+const updateUserSchema = z.object({
+  name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres").max(100, "Nome muito longo"),
+});
+
+app.put("/api/users/me", async (req, res) => {
+  const payload = getUserFromRequest(req);
+  if (!payload) return res.status(401).json({ error: "Não autorizado" });
+
+  try {
+    const validation = updateUserSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res
+        .status(400)
+        .json({ error: validation.error.errors[0].message });
+    }
+
+    const { name } = validation.data;
+
+    const user = await prisma.user.update({
+      where: { id: payload.userId },
+      data: { name },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        avatarUrl: true,
+        pixKey: true,
+        createdAt: true,
+      },
+    });
+
+    res.json(user);
+  } catch (error) {
+    console.error("Update user error:", error);
+    res.status(500).json({ error: "Erro ao atualizar usuário" });
+  }
+});
+
 // ===== HEALTH CHECK =====
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import { auth, User } from '@/lib/api';
+import { auth, users, User } from '@/lib/api';
 import { registerForPushNotifications, unregisterPushNotifications } from '@/lib/notifications';
 
 interface AuthContextType {
@@ -13,6 +13,7 @@ interface AuthContextType {
   register: (name: string, email: string, password: string) => Promise<void>;
   loginWithGoogle: (idToken: string) => Promise<void>;
   loginWithApple: (identityToken: string, fullName?: string | null) => Promise<void>;
+  updateProfile: (name: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -194,6 +195,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.replace('/(auth)/login');
   };
 
+  const updateProfile = async (name: string) => {
+    try {
+      const updatedUser = await users.updateProfile({ name });
+      setUser(updatedUser);
+      await AsyncStorage.setItem(USER_KEY, JSON.stringify(updatedUser));
+    } catch (error) {
+      throw error;
+    }
+  };
+
   const refreshUser = async () => {
     try {
       const currentUser = await auth.me();
@@ -214,6 +225,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     register,
     loginWithGoogle,
     loginWithApple,
+    updateProfile,
     logout,
     refreshUser,
   };
