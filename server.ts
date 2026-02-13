@@ -1035,8 +1035,8 @@ function simplifyDebts(
     .sort((a, b) => b.amount - a.amount);
 
   const debts: {
-    from: { id: string; name: string; avatarUrl: string | null };
-    to: { id: string; name: string; avatarUrl: string | null };
+    from: { id: string; name: string; avatarUrl: string | null; pixKey: string | null };
+    to: { id: string; name: string; avatarUrl: string | null; pixKey: string | null };
     amount: number;
   }[] = [];
   let i = 0;
@@ -1079,7 +1079,7 @@ app.get("/api/groups/:id/balances", async (req, res) => {
       include: {
         members: {
           include: {
-            user: { select: { id: true, name: true, avatarUrl: true } },
+            user: { select: { id: true, name: true, avatarUrl: true, pixKey: true } },
           },
         },
       },
