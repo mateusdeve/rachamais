@@ -8,6 +8,7 @@ import { colors } from '@/constants/colors';
 import { spacing } from '@/constants/spacing';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 
 interface DebtCardProps {
   debt: SimplifiedDebt & { isUserOwed?: boolean; isUserOwes?: boolean };
@@ -22,6 +23,7 @@ interface DebtCardProps {
 export function DebtCard({ debt, isUserOwed, isUserOwes, onPay, onConfirmReceipt, loading, confirmingReceipt }: DebtCardProps) {
   const router = useRouter();
   const { user } = useAuth();
+  const { showSuccess } = useToast();
   const [showPixKey, setShowPixKey] = useState(false);
   const [pixKeyCopied, setPixKeyCopied] = useState(false);
   const isThirdParty = !isUserOwed && !isUserOwes;
@@ -38,6 +40,7 @@ export function DebtCard({ debt, isUserOwed, isUserOwes, onPay, onConfirmReceipt
   const handleCopyPixKey = async (pixKey: string) => {
     await Clipboard.setStringAsync(pixKey);
     setPixKeyCopied(true);
+    showSuccess('Chave PIX copiada!');
     setTimeout(() => setPixKeyCopied(false), 2000);
   };
 

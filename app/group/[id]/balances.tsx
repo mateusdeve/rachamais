@@ -211,6 +211,25 @@ export default function BalancesScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {user && !user.pixKey?.trim() && (
+          <Pressable
+            style={({ pressed }) => [
+              styles.pixKeyWarningBanner,
+              pressed && styles.buttonPressed,
+            ]}
+            onPress={() => router.push('/(tabs)/profile')}
+          >
+            <Ionicons name="alert-circle" size={22} color="#B45309" />
+            <View style={styles.pixKeyWarningBannerContent}>
+              <Text style={styles.pixKeyWarningBannerText}>
+                Cadastre sua chave PIX no perfil para receber pagamentos.
+              </Text>
+              <Text style={styles.pixKeyWarningBannerLink}>Cadastrar chave PIX</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#B45309" />
+          </Pressable>
+        )}
+
         <View style={styles.balanceCard}>
           <Text style={styles.balanceLabel}>Seu saldo total no grupo</Text>
           <View style={styles.balanceRow}>
@@ -333,6 +352,29 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: spacing.lg,
     paddingBottom: 100,
+  },
+  pixKeyWarningBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF7ED',
+    borderRadius: 12,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+    gap: spacing.sm,
+  },
+  pixKeyWarningBannerContent: {
+    flex: 1,
+  },
+  pixKeyWarningBannerText: {
+    ...typography.styles.body,
+    color: '#9A3412',
+    marginBottom: spacing.xs,
+  },
+  pixKeyWarningBannerLink: {
+    ...typography.styles.bodyBold,
+    color: '#B45309',
   },
   balanceCard: {
     backgroundColor: colors.background,
