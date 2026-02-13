@@ -12,6 +12,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   loginWithGoogle: (idToken: string) => Promise<void>;
+  loginWithApple: (identityToken: string, fullName?: string | null) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -159,6 +160,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const loginWithApple = async (
+    identityToken: string,
+    fullName?: string | null,
+  ) => {
+    try {
+      const response = await auth.appleLogin({ identityToken, fullName });
+
+      await AsyncStorage.setItem(TOKEN_KEY, response.token);
+      await AsyncStorage.setItem(USER_KEY, JSON.stringify(response.user));
+
+      setToken(response.token);
+      setUser(response.user);
+
+      // Registrar notificações push
+      registerForPushNotifications().catch((err) => {
+        console.error('Erro ao registrar notificações:', err);
+      });
+
+      router.replace('/(tabs)');
+    } catch (error) {
+      throw error;
+    }
+  };
+
   const logout = async () => {
     // Remover token de notificações
     await unregisterPushNotifications().catch((err) => {
@@ -187,7 +212,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAuthenticated: !!token && !!user,
     login,
     register,
-     loginWithGoogle,
+    loginWithGoogle,
+    loginWithApple,
     logout,
     refreshUser,
   };

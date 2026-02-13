@@ -241,6 +241,13 @@ export const auth = {
     });
   },
 
+  appleLogin: async (data: { identityToken: string; fullName?: string | null }) => {
+    return apiClient<AuthResponse>('/api/auth/apple', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
   me: async () => {
     return apiClient<User>('/api/auth/me');
   },

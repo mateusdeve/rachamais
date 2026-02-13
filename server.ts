@@ -4,6 +4,7 @@ import cors from "cors";
 import express from "express";
 import jwt from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
+import verifyAppleToken from "verify-apple-id-token";
 import { z } from "zod";
 
 const app = express();
@@ -60,6 +61,11 @@ const loginSchema = z.object({
 
 const googleAuthSchema = z.object({
   idToken: z.string().min(1, "idToken é obrigatório"),
+});
+
+const appleAuthSchema = z.object({
+  identityToken: z.string().min(1, "identityToken é obrigatório"),
+  fullName: z.string().optional().nullable(),
 });
 
 const createGroupSchema = z.object({
@@ -567,6 +573,82 @@ app.post("/api/auth/google", async (req, res) => {
   } catch (error) {
     console.error("Google auth error:", error);
     res.status(500).json({ error: "Erro ao autenticar com Google" });
+  }
+});
+
+const APPLE_BUNDLE_ID = process.env.APPLE_BUNDLE_ID || "com.rachamais.app";
+
+app.post("/api/auth/apple", async (req, res) => {
+  try {
+    const validation = appleAuthSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res
+        .status(400)
+        .json({ error: validation.error.errors[0].message });
+    }
+
+    const { identityToken, fullName } = validation.data;
+
+    let applePayload: { sub: string; email?: string };
+    try {
+      applePayload = await verifyAppleToken({
+        idToken: identityToken,
+        clientId: APPLE_BUNDLE_ID,
+      });
+    } catch (verifyErr) {
+      console.error("Apple token verification error:", verifyErr);
+      return res
+        .status(401)
+        .json({ error: "Token da Apple inválido ou expirado." });
+    }
+
+    const sub = applePayload.sub;
+    const email = (applePayload as { email?: string }).email;
+
+    // Apple pode ocultar o email - usar sub como fallback para email único
+    const userEmail =
+      email && email.length > 0
+        ? email
+        : `apple_${sub}@privaterelay.appleid.com`;
+
+    const userName =
+      fullName && fullName.trim().length > 0 ? fullName.trim() : "Usuário Apple";
+
+    // Buscar ou criar usuário
+    let user = await prisma.user.findUnique({ where: { email: userEmail } });
+
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          name: userName,
+          email: userEmail,
+          password: await hashPassword(
+            `apple-${sub}-${Date.now().toString()}`,
+          ),
+        },
+      });
+    } else if (user.name === "Usuário Apple" && fullName?.trim()) {
+      // Atualizar nome se foi fornecido e estava com placeholder
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { name: fullName.trim() },
+      });
+    }
+
+    const token = generateToken({ userId: user.id, email: user.email });
+
+    return res.json({
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        avatarUrl: user.avatarUrl,
+      },
+      token,
+    });
+  } catch (error) {
+    console.error("Apple auth error:", error);
+    res.status(500).json({ error: "Erro ao autenticar com Apple" });
   }
 });
 

@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { GoogleLoginButton } from '@/components/GoogleLoginButton';
+import { AppleLoginButton } from '@/components/AppleLoginButton';
 import { colors } from '@/constants/colors';
 import { spacing } from '@/constants/spacing';
 import { typography } from '@/constants/typography';
@@ -13,7 +14,7 @@ import { useToast } from '@/contexts/ToastContext';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { login, loginWithGoogle } = useAuth();
+  const { login, loginWithGoogle, loginWithApple } = useAuth();
   const { showError, showSuccess } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -73,6 +74,19 @@ export default function LoginScreen() {
     try {
       await loginWithGoogle(idToken);
       showSuccess('Login com Google realizado com sucesso!');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAppleSuccess = async (
+    identityToken: string,
+    fullName?: string | null,
+  ) => {
+    setIsLoading(true);
+    try {
+      await loginWithApple(identityToken, fullName);
+      showSuccess('Login com Apple realizado com sucesso!');
     } finally {
       setIsLoading(false);
     }
@@ -170,6 +184,12 @@ export default function LoginScreen() {
 
               <GoogleLoginButton
                 onSuccess={handleGoogleSuccess}
+                onError={showError}
+                disabled={isLoading}
+              />
+
+              <AppleLoginButton
+                onSuccess={handleAppleSuccess}
                 onError={showError}
                 disabled={isLoading}
               />
