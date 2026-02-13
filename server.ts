@@ -576,7 +576,17 @@ app.post("/api/auth/google", async (req, res) => {
   }
 });
 
-const APPLE_BUNDLE_ID = process.env.APPLE_BUNDLE_ID || "com.rachamais.app";
+// Bundle IDs aceitos para Apple Sign In (pode ser múltiplos separados por vírgula)
+const APPLE_BUNDLE_IDS = (process.env.APPLE_BUNDLE_ID || "com.rachamais.app")
+  .split(",")
+  .map((id) => id.trim())
+  .filter((id) => id.length > 0);
+
+// Logar configuração do Apple Sign In na inicialização
+console.log(`✅ Apple Sign In configurado com ${APPLE_BUNDLE_IDS.length} bundle ID(s):`);
+APPLE_BUNDLE_IDS.forEach((id, index) => {
+  console.log(`   ${index + 1}. ${id}`);
+});
 
 app.post("/api/auth/apple", async (req, res) => {
   try {
@@ -589,17 +599,42 @@ app.post("/api/auth/apple", async (req, res) => {
 
     const { identityToken, fullName } = validation.data;
 
+    // Decodificar token para debug (sem verificar assinatura)
+    let decodedToken: any;
+    try {
+      decodedToken = jwt.decode(identityToken, { complete: true });
+      const tokenAud = decodedToken?.payload?.aud;
+      console.log("📱 Apple token recebido:");
+      console.log("   - aud (bundle ID no token):", tokenAud);
+      console.log("   - iss:", decodedToken?.payload?.iss);
+      console.log("   - sub:", decodedToken?.payload?.sub);
+      console.log("   - Bundle IDs aceitos:", APPLE_BUNDLE_IDS.join(", "));
+      
+      if (tokenAud && !APPLE_BUNDLE_IDS.includes(tokenAud)) {
+        console.warn(`⚠️ Bundle ID no token (${tokenAud}) não corresponde aos aceitos!`);
+      }
+    } catch (decodeErr) {
+      console.error("Erro ao decodificar token:", decodeErr);
+    }
+
     let applePayload: { sub: string; email?: string };
     try {
+      // verify-apple-id-token aceita string ou array de strings para clientId
       applePayload = await verifyAppleToken({
         idToken: identityToken,
-        clientId: APPLE_BUNDLE_ID,
+        clientId: APPLE_BUNDLE_IDS.length === 1 ? APPLE_BUNDLE_IDS[0] : APPLE_BUNDLE_IDS,
       });
-    } catch (verifyErr) {
-      console.error("Apple token verification error:", verifyErr);
+      console.log("✅ Token da Apple verificado com sucesso - sub:", applePayload.sub);
+    } catch (verifyErr: any) {
+      console.error("❌ Apple token verification error:", verifyErr);
+      console.error("❌ Erro detalhado:", verifyErr?.message || verifyErr);
+      console.error("❌ Stack:", verifyErr?.stack);
       return res
         .status(401)
-        .json({ error: "Token da Apple inválido ou expirado." });
+        .json({ 
+          error: "Token da Apple inválido ou expirado.",
+          details: verifyErr?.message || "Erro na verificação do token"
+        });
     }
 
     const sub = applePayload.sub;
