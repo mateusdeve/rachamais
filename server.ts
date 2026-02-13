@@ -4,7 +4,20 @@ import cors from "cors";
 import express from "express";
 import jwt from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
-import verifyAppleToken from "verify-apple-id-token";
+// Importar verify-apple-id-token - pacote CommonJS com default export
+// Usar importação dinâmica para compatibilidade ESM/CommonJS
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const verifyAppleTokenModule = require('verify-apple-id-token');
+const verifyAppleToken = verifyAppleTokenModule.default || verifyAppleTokenModule.verifyToken || verifyAppleTokenModule;
+
+if (typeof verifyAppleToken !== 'function') {
+  console.error('❌ verifyAppleToken não é uma função! Tipo:', typeof verifyAppleToken);
+  console.error('❌ Módulo completo:', Object.keys(verifyAppleTokenModule));
+  throw new Error('verify-apple-id-token não foi importado corretamente');
+}
+
+console.log('✅ verifyAppleToken importado com sucesso');
 import { z } from "zod";
 
 const app = express();
