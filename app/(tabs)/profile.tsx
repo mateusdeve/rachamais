@@ -17,7 +17,7 @@ const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, logout, updateProfile } = useAuth();
+  const { user, logout, updateProfile, deleteAccount } = useAuth();
   const { showSuccess, showError } = useToast();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [isEditingName, setIsEditingName] = useState(false);
@@ -147,6 +147,28 @@ export default function ProfileScreen() {
           style: 'destructive',
           onPress: async () => {
             await logout();
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Deletar conta',
+      'Tem certeza que deseja deletar sua conta? Esta ação não pode ser desfeita. Todos os seus dados serão permanentemente removidos.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Deletar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteAccount();
+              showSuccess('Conta deletada com sucesso');
+            } catch (error) {
+              showError(error instanceof Error ? error.message : 'Erro ao deletar conta');
+            }
           },
         },
       ]
@@ -410,6 +432,19 @@ export default function ProfileScreen() {
           <Text style={styles.logoutText}>Sair da conta</Text>
         </Pressable>
 
+        <Pressable
+          onPress={handleDeleteAccount}
+          style={({ pressed }) => [
+            styles.deleteAccountButton,
+            pressed && styles.deleteAccountButtonPressed,
+          ]}
+        >
+          <View style={styles.deleteAccountIconContainer}>
+            <Ionicons name="trash-outline" size={20} color={colors.error} />
+          </View>
+          <Text style={styles.deleteAccountText}>Deletar conta</Text>
+        </Pressable>
+
         <Text style={styles.footerVersion}>RachaMais v{APP_VERSION}</Text>
       </ScrollView>
     </View>
@@ -635,6 +670,43 @@ const styles = StyleSheet.create({
     borderRadius: 22,
   },
   logoutText: {
+    ...typography.styles.bodyBold,
+    color: colors.error,
+    flex: 1,
+  },
+  deleteAccountButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    borderRadius: 16,
+    marginTop: spacing.md,
+    padding: spacing.lg,
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+      },
+      android: { elevation: 2 },
+    }),
+  },
+  deleteAccountButtonPressed: {
+    opacity: 0.95,
+    backgroundColor: colors.surface,
+  },
+  deleteAccountIconContainer: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderRadius: 22,
+  },
+  deleteAccountText: {
     ...typography.styles.bodyBold,
     color: colors.error,
     flex: 1,

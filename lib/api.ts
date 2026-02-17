@@ -373,6 +373,12 @@ export const users = {
       body: JSON.stringify(data),
     });
   },
+
+  deleteAccount: async () => {
+    return apiClient<{ success: boolean; message: string }>('/api/users/me', {
+      method: 'DELETE',
+    });
+  },
 };
 
 // API de Atividades

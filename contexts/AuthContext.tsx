@@ -14,6 +14,7 @@ interface AuthContextType {
   loginWithGoogle: (idToken: string) => Promise<void>;
   loginWithApple: (identityToken: string, fullName?: string | null) => Promise<void>;
   updateProfile: (name?: string, pixKey?: string | null) => Promise<void>;
+  deleteAccount: () => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -220,6 +221,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const deleteAccount = async () => {
+    try {
+      await users.deleteAccount();
+      // Limpar dados locais e fazer logout após deletar
+      await clearAuthData();
+      router.replace('/(auth)/login');
+    } catch (error) {
+      throw error;
+    }
+  };
+
   const value: AuthContextType = {
     user,
     token,
@@ -230,6 +242,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loginWithGoogle,
     loginWithApple,
     updateProfile,
+    deleteAccount,
     logout,
     refreshUser,
   };

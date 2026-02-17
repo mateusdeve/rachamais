@@ -1868,6 +1868,112 @@ app.put("/api/users/me", async (req, res) => {
   }
 });
 
+app.delete("/api/users/me", async (req, res) => {
+  const payload = getUserFromRequest(req);
+  if (!payload) return res.status(401).json({ error: "Não autorizado" });
+
+  try {
+    const userId = payload.userId;
+
+    // Buscar grupos criados pelo usuário
+    const groupsCreatedByUser = await prisma.group.findMany({
+      where: { createdById: userId },
+      include: {
+        members: {
+          select: { userId: true },
+        },
+      },
+    });
+
+    // Para cada grupo criado pelo usuário:
+    // - Se não houver outros membros além do criador, deletar o grupo
+    // - Se houver outros membros, transferir a criação para o primeiro membro
+    for (const group of groupsCreatedByUser) {
+      const otherMembers = group.members.filter((m) => m.userId !== userId);
+      
+      if (otherMembers.length === 0) {
+        // Deletar grupo se só tem o criador (expenses, settlements, activities serão deletados por cascade)
+        await prisma.group.delete({ where: { id: group.id } });
+      } else {
+        // Transferir criação para o primeiro membro
+        await prisma.group.update({
+          where: { id: group.id },
+          data: { createdById: otherMembers[0].userId },
+        });
+      }
+    }
+
+    // Deletar registros relacionados que não têm cascade antes de deletar o usuário
+    // ExpenseSplit relacionado ao usuário
+    await prisma.expenseSplit.deleteMany({
+      where: { userId },
+    });
+
+    // Expenses pagos pelo usuário (deletar se não houver outros membros no grupo)
+    // Na verdade, vamos manter expenses para histórico, mas precisamos tratar paidBy
+    // Vou deletar expenses onde o usuário pagou e não há mais membros no grupo
+    const expensesPaidByUser = await prisma.expense.findMany({
+      where: { paidById: userId },
+      include: {
+        group: {
+          include: {
+            members: {
+              select: { userId: true },
+            },
+          },
+        },
+      },
+    });
+
+    for (const expense of expensesPaidByUser) {
+      const hasOtherMembers = expense.group.members.some((m) => m.userId !== userId);
+      if (!hasOtherMembers) {
+        // Se não há outros membros, deletar expense (splits serão deletados por cascade)
+        await prisma.expense.delete({ where: { id: expense.id } });
+      } else {
+        // Se há outros membros, transferir paidBy para o primeiro membro disponível
+        const otherMember = expense.group.members.find((m) => m.userId !== userId);
+        if (otherMember) {
+          await prisma.expense.update({
+            where: { id: expense.id },
+            data: { paidById: otherMember.userId },
+          });
+        }
+      }
+    }
+
+    // Deletar settlements onde o usuário está envolvido
+    await prisma.settlement.deleteMany({
+      where: {
+        OR: [
+          { fromUserId: userId },
+          { toUserId: userId },
+        ],
+      },
+    });
+
+    // Deletar activities do usuário
+    await prisma.activity.deleteMany({
+      where: { userId },
+    });
+
+    // Remover token de notificações antes de deletar (já tem cascade, mas deletando explicitamente)
+    await prisma.deviceToken.deleteMany({
+      where: { userId },
+    });
+
+    // Deletar o usuário (GroupMember será deletado automaticamente por cascade)
+    await prisma.user.delete({
+      where: { id: userId },
+    });
+
+    res.json({ success: true, message: "Conta deletada com sucesso" });
+  } catch (error) {
+    console.error("Delete user error:", error);
+    res.status(500).json({ error: "Erro ao deletar conta" });
+  }
+});
+
 // ===== HEALTH CHECK =====
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
