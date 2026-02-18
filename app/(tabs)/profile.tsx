@@ -403,20 +403,6 @@ export default function ProfileScreen() {
               <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
             </View>
           </Pressable>
-          <Pressable
-            onPress={() => router.push('/privacy')}
-            style={({ pressed }) => [styles.settingsCard, pressed && styles.cardPressed]}
-          >
-            <View style={styles.settingsItem}>
-              <View style={styles.settingsItemLeft}>
-                <View style={styles.iconContainer}>
-                  <Ionicons name="document-text-outline" size={20} color={colors.text} />
-                </View>
-                <Text style={styles.settingsItemText}>Privacidade</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-            </View>
-          </Pressable>
         </View>
 
         <Pressable

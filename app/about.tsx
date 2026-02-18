@@ -15,7 +15,8 @@ import { spacing } from '@/constants/spacing';
 import { typography } from '@/constants/typography';
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
-const PRIVACY_URL = 'https://rachamais-production.up.railway.app/privacy';
+const PRIVACY_URL = 'https://www.rachamais.com.br/politica-de-privacidade';
+const TERMS_URL = 'https://www.rachamais.com.br/termos-de-uso';
 
 export default function AboutScreen() {
   const router = useRouter();
@@ -52,6 +53,15 @@ export default function AboutScreen() {
           >
             <Ionicons name="document-text-outline" size={22} color={colors.primary} />
             <Text style={styles.linkText}>Política de privacidade</Text>
+            <Ionicons name="open-outline" size={18} color={colors.textMuted} />
+          </Pressable>
+          <View style={styles.divider} />
+          <Pressable
+            onPress={() => Linking.openURL(TERMS_URL)}
+            style={({ pressed }) => [styles.linkRow, pressed && styles.linkPressed]}
+          >
+            <Ionicons name="document-text-outline" size={22} color={colors.primary} />
+            <Text style={styles.linkText}>Termos de uso</Text>
             <Ionicons name="open-outline" size={18} color={colors.textMuted} />
           </Pressable>
         </View>
@@ -151,4 +161,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   linkPressed: { opacity: 0.9 },
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: spacing.md,
+  },
 });

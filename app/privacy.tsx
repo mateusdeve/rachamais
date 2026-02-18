@@ -5,7 +5,7 @@ import { colors } from '@/constants/colors';
 import { spacing } from '@/constants/spacing';
 import { typography } from '@/constants/typography';
 
-const PRIVACY_URL = 'https://rachamais-production.up.railway.app/privacy';
+const PRIVACY_URL = 'https://www.rachamais.com.br/politica-de-privacidade';
 
 export default function PrivacyScreen() {
   const router = useRouter();
