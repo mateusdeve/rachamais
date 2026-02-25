@@ -58,14 +58,13 @@ export default function LoginScreen() {
       await login(email, password);
       showSuccess('Login realizado com sucesso!');
     } catch (error) {
-      setIsLoading(false);
       const errorMessage = error instanceof Error ? error.message : 'Erro ao fazer login';
       showError(errorMessage);
-      
-      // Definir erros específicos se possível
       if (errorMessage.includes('Email') || errorMessage.includes('senha')) {
         setErrors({ email: 'Email ou senha inválidos', password: 'Email ou senha inválidos' });
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 

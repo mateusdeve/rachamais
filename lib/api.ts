@@ -155,10 +155,25 @@ export interface InviteResponse {
   groupName?: string;
 }
 
+const DEFAULT_TIMEOUT_MS = 30000;
+
+function fetchWithTimeout(
+  url: string,
+  options: RequestInit & { timeoutMs?: number } = {}
+): Promise<Response> {
+  const { timeoutMs = DEFAULT_TIMEOUT_MS, ...fetchOptions } = options;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, {
+    ...fetchOptions,
+    signal: controller.signal,
+  }).finally(() => clearTimeout(timeoutId));
+}
+
 // Cliente API base
 async function apiClient<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit & { timeoutMs?: number } = {}
 ): Promise<T> {
   const token = await AsyncStorage.getItem('auth_token');
   
@@ -179,10 +194,13 @@ async function apiClient<T>(
     ? endpoint 
     : `${API_BASE_URL}${endpoint}`;
 
+  const { timeoutMs, ...fetchOptions } = options;
+
   try {
-    const response = await fetch(url, {
-      ...options,
+    const response = await fetchWithTimeout(url, {
+      ...fetchOptions,
       headers,
+      timeoutMs: timeoutMs ?? DEFAULT_TIMEOUT_MS,
     });
     
     // Verificar se a resposta é JSON
@@ -213,6 +231,9 @@ async function apiClient<T>(
     return data as T;
   } catch (error) {
     if (error instanceof Error) {
+      if (error.name === 'AbortError') {
+        throw new Error('Tempo esgotado. Verifique sua conexão e tente novamente.');
+      }
       throw error;
     }
     throw new Error('Erro de conexão');

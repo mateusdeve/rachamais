@@ -100,90 +100,71 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const login = async (email: string, password: string) => {
-    try {
-      const response = await auth.login({ email, password });
-      
-      await AsyncStorage.setItem(TOKEN_KEY, response.token);
-      await AsyncStorage.setItem(USER_KEY, JSON.stringify(response.user));
-      
-      setToken(response.token);
-      setUser(response.user);
-      
-      // Registrar notificações push
-      registerForPushNotifications().catch((err) => {
-        console.error('Erro ao registrar notificações:', err);
-      });
-      
+    const response = await auth.login({ email, password });
+    await AsyncStorage.setItem(TOKEN_KEY, response.token);
+    await AsyncStorage.setItem(USER_KEY, JSON.stringify(response.user));
+    setToken(response.token);
+    setUser(response.user);
+    // Navegar no próximo tick para o estado ser commitado (evita travamento em iPad)
+    setTimeout(() => {
       router.replace('/(tabs)');
-    } catch (error) {
-      throw error;
-    }
+      setTimeout(() => {
+        registerForPushNotifications().catch((err) => {
+          console.error('Erro ao registrar notificações:', err);
+        });
+      }, 500);
+    }, 0);
   };
 
   const register = async (name: string, email: string, password: string) => {
-    try {
-      const response = await auth.register({ name, email, password });
-      
-      await AsyncStorage.setItem(TOKEN_KEY, response.token);
-      await AsyncStorage.setItem(USER_KEY, JSON.stringify(response.user));
-      
-      setToken(response.token);
-      setUser(response.user);
-      
-      // Registrar notificações push
-      registerForPushNotifications().catch((err) => {
-        console.error('Erro ao registrar notificações:', err);
-      });
-      
+    const response = await auth.register({ name, email, password });
+    await AsyncStorage.setItem(TOKEN_KEY, response.token);
+    await AsyncStorage.setItem(USER_KEY, JSON.stringify(response.user));
+    setToken(response.token);
+    setUser(response.user);
+    setTimeout(() => {
       router.replace('/(tabs)');
-    } catch (error) {
-      throw error;
-    }
+      setTimeout(() => {
+        registerForPushNotifications().catch((err) => {
+          console.error('Erro ao registrar notificações:', err);
+        });
+      }, 500);
+    }, 0);
   };
 
   const loginWithGoogle = async (idToken: string) => {
-    try {
-      const response = await auth.googleLogin({ idToken });
-
-      await AsyncStorage.setItem(TOKEN_KEY, response.token);
-      await AsyncStorage.setItem(USER_KEY, JSON.stringify(response.user));
-
-      setToken(response.token);
-      setUser(response.user);
-
-      // Registrar notificações push
-      registerForPushNotifications().catch((err) => {
-        console.error('Erro ao registrar notificações:', err);
-      });
-
+    const response = await auth.googleLogin({ idToken });
+    await AsyncStorage.setItem(TOKEN_KEY, response.token);
+    await AsyncStorage.setItem(USER_KEY, JSON.stringify(response.user));
+    setToken(response.token);
+    setUser(response.user);
+    setTimeout(() => {
       router.replace('/(tabs)');
-    } catch (error) {
-      throw error;
-    }
+      setTimeout(() => {
+        registerForPushNotifications().catch((err) => {
+          console.error('Erro ao registrar notificações:', err);
+        });
+      }, 500);
+    }, 0);
   };
 
   const loginWithApple = async (
     identityToken: string,
     fullName?: string | null,
   ) => {
-    try {
-      const response = await auth.appleLogin({ identityToken, fullName });
-
-      await AsyncStorage.setItem(TOKEN_KEY, response.token);
-      await AsyncStorage.setItem(USER_KEY, JSON.stringify(response.user));
-
-      setToken(response.token);
-      setUser(response.user);
-
-      // Registrar notificações push
-      registerForPushNotifications().catch((err) => {
-        console.error('Erro ao registrar notificações:', err);
-      });
-
+    const response = await auth.appleLogin({ identityToken, fullName });
+    await AsyncStorage.setItem(TOKEN_KEY, response.token);
+    await AsyncStorage.setItem(USER_KEY, JSON.stringify(response.user));
+    setToken(response.token);
+    setUser(response.user);
+    setTimeout(() => {
       router.replace('/(tabs)');
-    } catch (error) {
-      throw error;
-    }
+      setTimeout(() => {
+        registerForPushNotifications().catch((err) => {
+          console.error('Erro ao registrar notificações:', err);
+        });
+      }, 500);
+    }, 0);
   };
 
   const logout = async () => {

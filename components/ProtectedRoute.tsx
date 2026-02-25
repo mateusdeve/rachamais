@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter, useSegments } from 'expo-router';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,6 +9,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const segments = useSegments();
   const [shouldRedirect, setShouldRedirect] = useState(false);
+  const hasRedirected = useRef(false);
 
   useEffect(() => {
     if (isLoading) {
@@ -19,10 +20,13 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
     const inAuthGroup = segments[0] === '(auth)';
 
     if (!isAuthenticated && !inAuthGroup) {
-      // Redirecionar para login se não estiver autenticado
-      setShouldRedirect(true);
-      router.replace('/(auth)/login');
+      if (!hasRedirected.current) {
+        hasRedirected.current = true;
+        setShouldRedirect(true);
+        router.replace('/(auth)/login');
+      }
     } else {
+      hasRedirected.current = false;
       setShouldRedirect(false);
     }
   }, [isAuthenticated, isLoading, segments, router]);
