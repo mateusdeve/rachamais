@@ -33,7 +33,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (isLoading || shouldRedirect) {
     return (
-      <View style={styles.container}>
+      <View style={styles.container} pointerEvents="none">
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
@@ -41,7 +41,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (!isAuthenticated) {
     return (
-      <View style={styles.container}>
+      <View style={styles.container} pointerEvents="none">
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );

@@ -113,7 +113,10 @@ export default function Index() {
   };
 
   return (
-    <View style={styles.container}>
+    <View
+      style={styles.container}
+      pointerEvents="none"
+    >
       <ActivityIndicator size="large" color={colors.primary} />
       <Text style={styles.text}>Carregando...</Text>
     </View>

@@ -105,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await AsyncStorage.setItem(USER_KEY, JSON.stringify(response.user));
     setToken(response.token);
     setUser(response.user);
-    // Navegar no próximo tick para o estado ser commitado (evita travamento em iPad)
+    // Navegar após o estado ser commitado (evita tela travada no iPad - ProtectedRoute precisa ver isAuthenticated=true)
     setTimeout(() => {
       router.replace('/(tabs)');
       setTimeout(() => {
@@ -113,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.error('Erro ao registrar notificações:', err);
         });
       }, 500);
-    }, 0);
+    }, 100);
   };
 
   const register = async (name: string, email: string, password: string) => {
@@ -129,7 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.error('Erro ao registrar notificações:', err);
         });
       }, 500);
-    }, 0);
+    }, 100);
   };
 
   const loginWithGoogle = async (idToken: string) => {
@@ -145,7 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.error('Erro ao registrar notificações:', err);
         });
       }, 500);
-    }, 0);
+    }, 100);
   };
 
   const loginWithApple = async (
@@ -164,7 +164,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.error('Erro ao registrar notificações:', err);
         });
       }, 500);
-    }, 0);
+    }, 100);
   };
 
   const logout = async () => {
