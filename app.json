@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.rachamais.app",
-      "buildNumber": "18",
+      "buildNumber": "19",
       "usesAppleSignIn": true,
       "config": {
         "usesNonExemptEncryption": false
@@ -24,7 +24,7 @@
     },
     "android": {
       "package": "com.rachamais.app",
-      "versionCode": 5,
+      "versionCode": 19,
       "adaptiveIcon": {
         "backgroundColor": "#22C55E",
         "foregroundImage": "./assets/images/icons/android-icon-192x192.png",
