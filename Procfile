@@ -1,1 +1,1 @@
-web: npx ts-node server.ts
+web: npx prisma migrate deploy && npx tsx server.ts
