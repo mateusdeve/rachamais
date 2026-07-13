@@ -24,5 +24,12 @@
       }
     }
   },
-  "submit": { "production": {} }
+  "submit": {
+    "production": {
+      "ios": {
+        "appleId": "mateus.developer.ti@gmail.com",
+        "ascAppId": "6479499344"
+      }
+    }
+  }
 }
