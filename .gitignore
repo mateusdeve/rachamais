@@ -186,3 +186,14 @@ app-example
 .next
 out
 .vercel
+
+# Cloudflare API (Python Workers)
+api/.dev.vars
+api/.venv/
+api/.venv-workers/
+api/python_modules/
+api/.wrangler/
+api/node_modules/
+api/migrate/data.sql
+legacy-bcrypt/node_modules/
+legacy-bcrypt/.wrangler/

@@ -1,0 +1,14 @@
+{
+  "name": "rachamais-api",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "uv run pywrangler dev",
+    "deploy": "uv run pywrangler deploy",
+    "db:local": "wrangler d1 execute rachamais --local --file schema.sql",
+    "db:remote": "wrangler d1 execute rachamais --remote --file schema.sql"
+  },
+  "devDependencies": {
+    "wrangler": "^4.46.0"
+  }
+}

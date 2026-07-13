@@ -1,1 +1,0 @@
-web: npx prisma migrate deploy && npx tsx server.ts

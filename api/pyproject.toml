@@ -1,0 +1,16 @@
+[project]
+name = "rachamais-api"
+version = "1.0.0"
+description = "RachaMais API — FastAPI on Cloudflare Python Workers, backed by D1"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi",
+    "pydantic",
+]
+
+[dependency-groups]
+dev = [
+    "workers-py",
+    "workers-runtime-sdk",
+]

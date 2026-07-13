@@ -1,0 +1,56 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "rachamais-api",
+  "main": "src/worker.py",
+  "compatibility_date": "2025-11-02",
+  // python_workers: required while Python Workers are in open beta.
+  // python_dedicated_snapshot: pre-snapshots the imported packages so cold start
+  // is ~1s instead of ~10s. FastAPI+Pydantic is a heavy import; without this the
+  // first request after an idle period is painfully slow.
+  "compatibility_flags": ["python_workers", "python_dedicated_snapshot"],
+
+  "workers_dev": false,
+
+  // Serves the API the app already points at. Cloudflare manages the DNS record
+  // and the certificate for this hostname.
+  "routes": [
+    {
+      "pattern": "api.rachamais.com.br",
+      "custom_domain": true
+    }
+  ],
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "rachamais",
+      "database_id": "be8a8bf7-00d1-46f4-bc34-419b3bbbbdc1"
+    }
+  ],
+
+  // Legacy bcrypt verifier. Pyodide has no native modules, so bcrypt hashes
+  // written by the old Express API cannot be checked in Python. This service
+  // binding hands those (and only those) to a tiny JS worker running bcryptjs.
+  // Every legacy hash is upgraded to PBKDF2 on first successful login, so this
+  // binding gets quieter over time and can eventually be deleted.
+  "services": [
+    {
+      "binding": "LEGACY_BCRYPT",
+      "service": "rachamais-legacy-bcrypt"
+    }
+  ],
+
+  // Not secrets: the Google client ids and the Apple bundle id are public
+  // identifiers that already ship inside the app binary (see eas.json).
+  // The real secrets — JWT_SECRET and EXPO_ACCESS_TOKEN — are set with
+  // `wrangler secret put` and never live in this file.
+  "vars": {
+    "INVITE_BASE_URL": "https://api.rachamais.com.br",
+    "APPLE_BUNDLE_ID": "com.rachamais.app",
+    "GOOGLE_OAUTH_CLIENT_IDS": "225872554699-185uva6lk6uoqif6fc3b327f86iao7aa.apps.googleusercontent.com,225872554699-7t97j1m29ab9l2hh405ldkbi66v21foc.apps.googleusercontent.com"
+  },
+
+  "observability": {
+    "enabled": true
+  }
+}
